@@ -238,12 +238,12 @@ export default function HomePage() {
     <main className="min-h-screen bg-gradient-to-b from-pink-50 via-pink-50 to-white px-4 py-8">
       <div className="mx-auto max-w-5xl">
         <div className="mb-4 flex items-center gap-3">
-          <div className="relative h-14 w-14 md:h-16 md:w-16">
+          <div className="relative h-25 w-50 md:h-16 md:w-16">
             <Image
               src="/vizinha-logo.png"
               alt="Logo Vizinha Salgateria"
               fill
-              className="rounded-full border-[4px] border-pink-300 bg-white object-cover shadow-md shadow-pink-200/80"
+              className="rounded-full border-[4px] border-pink-300 bg-white object-cover w-full shadow-md shadow-pink-200/80"
             />
           </div>
           <div>

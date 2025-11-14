@@ -1,0 +1,52 @@
+// datasource e generator você já deve ter, algo assim:
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model Encomenda {
+  id           String        @id @default(cuid())
+  txid         String        @unique
+  nome         String
+  email        String
+  telefone     String
+  endereco     String
+  observacoes  String?
+
+  itens        EncomendaItem[]
+
+  totalItens   Int
+  valorTotal   Decimal       @db.Decimal(10, 2)
+  valorPago    Decimal?      @db.Decimal(10, 2) // quanto o cliente declarou pagar (metade ou total)
+
+  status       StatusEncomenda @default(AGUARDANDO_PAGAMENTO)
+  comprovanteBase64 String?
+
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model EncomendaItem {
+  id          String     @id @default(cuid())
+  tipo        String
+  quantidade  Int
+
+  encomendaId String
+  encomenda   Encomenda  @relation(fields: [encomendaId], references: [id], onDelete: Cascade)
+}
+
+enum StatusEncomenda {
+  AGUARDANDO_PAGAMENTO
+  AGUARDANDO_VALIDACAO
+  PAGO_METADE      // meio pagamento confirmado
+  CONFIRMADO       // pagamento total confirmado
+  CANCELADO
+}

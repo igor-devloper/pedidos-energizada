@@ -61,7 +61,7 @@ export function VizinhaLayout({
           {/* LOGO */}
           <Section style={{ textAlign: "center", marginBottom: 24 }}>
             <Img
-              src="https://vizinha-salgateria.vercel.app/vizinha-logo.png"
+              src="https://vizinhasalgateria/vizinha-logo.png"
               width="80"
               height="80"
               alt="Vizinha Salgateria"

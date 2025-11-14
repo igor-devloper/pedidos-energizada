@@ -28,7 +28,6 @@ type Encomenda = {
   nome: string;
   telefone: string;
   email: string;
-  endereco: string;
   observacoes: string | null;
   status: string;
   totalItens: number;
@@ -492,10 +491,6 @@ export default function AdminPage() {
                   <p>
                     <span className="font-semibold">E-mail:</span>{" "}
                     {selected.email}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Endereço / Retirada:</span>{" "}
-                    {selected.endereco}
                   </p>
                   {selected.observacoes && (
                     <p>

@@ -209,7 +209,7 @@ export default function HomePage() {
       const data = await res.json();
       const txid: string | undefined = data?.txid ?? data?.encomenda?.txid;
 
-      toast.success("Encomenda enviada! Agora faça o pagamento para confirmar.");
+      toast.info("Encomenda enviada! Agora faça o pagamento para confirmar.");
 
       setQuantidades(
         SALGADOS.reduce(
@@ -223,7 +223,6 @@ export default function HomePage() {
       if (txid) {
         router.push(`/pagamento/${txid}`);
       }
-      toast.info("Faça o pagamento para confirmar o pedido.");
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || "Erro ao enviar encomenda");

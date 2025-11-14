@@ -31,19 +31,17 @@ export async function POST(req: Request) {
       nome,
       telefone,
       email,
-      endereco,
       observacoes,
       itens,
     } = body as {
       nome: string;
       telefone: string;
       email: string;
-      endereco: string;
       observacoes?: string;
       itens: { tipo: string; quantidade: number }[];
     };
 
-    if (!nome || !telefone || !email || !endereco) {
+    if (!nome || !telefone || !email ) {
       return NextResponse.json(
         { error: "Campos obrigatórios não preenchidos." },
         { status: 400 }

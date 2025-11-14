@@ -23,7 +23,6 @@ type Encomenda = {
   nome: string;
   telefone: string;
   email: string;
-  endereco: string;
   observacoes: string | null;
   status: string;
   createdAt: string;

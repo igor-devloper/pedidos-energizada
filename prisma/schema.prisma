@@ -18,7 +18,6 @@ model Encomenda {
   nome         String
   email        String
   telefone     String
-  endereco     String
   observacoes  String?
 
   itens        EncomendaItem[]

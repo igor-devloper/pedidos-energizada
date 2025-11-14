@@ -145,7 +145,7 @@ export default function PedidoConfirmadoEmail({
           }}
         >
           Em breve entraremos em contato pelo WhatsApp para alinhar detalhes de
-          data, horário e forma de retirada/entrega da sua encomenda.
+          data, horário e retirada da sua encomenda.
         </Text>
       </Section>
     </VizinhaLayout>

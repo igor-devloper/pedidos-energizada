@@ -95,7 +95,6 @@ export async function POST(req: Request) {
         nome,
         telefone,
         email,
-        endereco,
         observacoes: observacoes || null,
         totalItens,
         valorTotal,

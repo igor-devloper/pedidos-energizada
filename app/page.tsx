@@ -95,7 +95,6 @@ export default function HomePage() {
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
-  const [endereco, setEndereco] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -165,7 +164,7 @@ export default function HomePage() {
   };
 
   const handleSubmit = async () => {
-    if (!nome || !telefone || !email || !endereco) {
+    if (!nome || !telefone || !email) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
     }
@@ -197,7 +196,6 @@ export default function HomePage() {
           nome,
           telefone,
           email,
-          endereco,
           observacoes,
           itens,
         }),
@@ -378,17 +376,6 @@ export default function HomePage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="voce@exemplo.com"
-                    className="border-pink-100 bg-white focus-visible:ring-pink-400"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-slate-700">
-                    Endereço (ou ponto de retirada) *
-                  </label>
-                  <Input
-                    value={endereco}
-                    onChange={(e) => setEndereco(e.target.value)}
-                    placeholder="Rua, número, bairro"
                     className="border-pink-100 bg-white focus-visible:ring-pink-400"
                   />
                 </div>

@@ -1,13 +1,12 @@
-// emails/PedidoConfirmadoEmail.tsx
 import * as React from "react";
 import { VizinhaLayout } from "./vizinha-layout";
-import { Text, Section, Heading, Hr } from "@react-email/components";
+import { Section, Text, Heading, Hr } from "@react-email/components";
 
 export interface PedidoConfirmadoEmailProps {
   nome: string;
   txid: string;
   total: number;
-  valorEntrada: number;   // quanto foi pago agora (50% ou 100%)
+  valorEntrada: number;
 }
 
 export default function PedidoConfirmadoEmail({
@@ -16,7 +15,7 @@ export default function PedidoConfirmadoEmail({
   total,
   valorEntrada,
 }: PedidoConfirmadoEmailProps) {
-  const isMetade = valorEntrada < total - 0.01; // simpleszinha
+  const isMetade = valorEntrada < total - 0.01;
 
   return (
     <VizinhaLayout
@@ -24,128 +23,77 @@ export default function PedidoConfirmadoEmail({
       previewText={
         isMetade
           ? "Entrada confirmada! Veja os detalhes da sua encomenda."
-          : "Pagamento confirmado! Sua encomenda está 100% garantida."
+          : "Pagamento confirmado! Sua encomenda está garantida."
       }
     >
-      <Section style={{ marginBottom: 16 }}>
-        <Text
-          style={{
-            color: "#e5e7eb",
-            fontSize: 16,
-            lineHeight: "24px",
-            marginBottom: 12,
-          }}
-        >
+      <Section style={{ marginBottom: 20 }}>
+        <Text style={{ fontSize: 16, color: "#7b2349" }}>
           Olá, <strong>{nome}</strong> 👋
         </Text>
-        <Text
-          style={{
-            color: "#d1d5db",
-            fontSize: 14,
-            lineHeight: "22px",
-            margin: 0,
-          }}
-        >
-          Recebemos o seu pagamento e está tudo certo! Abaixo você encontra o
-          resumo da encomenda e o valor{" "}
-          {isMetade ? "da entrada (50%)" : "confirmado"}.
+
+        <Text style={{ fontSize: 14, color: "#9c3c5f", lineHeight: "22px" }}>
+          Recebemos {isMetade ? "a entrada" : "o pagamento completo"} da sua
+          encomenda!  
+          Abaixo estão os detalhes.
         </Text>
       </Section>
 
       <Section
         style={{
-          backgroundColor: "#020617",
-          borderRadius: 18,
+          background: "#fff0f6",
+          borderRadius: 16,
           padding: 20,
-          border: "1px solid #272b3b",
-          marginBottom: 16,
+          border: "2px solid #f5b5cc",
+          marginBottom: 24,
         }}
       >
         <Heading
           as="h2"
           style={{
-            color: "#4ade80",
-            fontSize: 16,
-            margin: 0,
-            marginBottom: 8,
+            fontSize: 17,
+            color: "#c2185b",
+            margin: "0 0 10px 0",
           }}
         >
-          Resumo do pedido
+          🎀 Resumo do pedido
         </Heading>
 
-        <Text
-          style={{
-            color: "#e5e7eb",
-            fontSize: 13,
-            lineHeight: "20px",
-            margin: "4px 0",
-          }}
-        >
+        <Text style={{ color: "#7b2349", fontSize: 14 }}>
           <strong>Nº do pedido:</strong> {txid}
         </Text>
-        <Text
-          style={{
-            color: "#e5e7eb",
-            fontSize: 13,
-            lineHeight: "20px",
-            margin: "4px 0",
-          }}
-        >
-          <strong>Valor total da encomenda:</strong>{" "}
+
+        <Text style={{ color: "#7b2349", fontSize: 14 }}>
+          <strong>Valor total:</strong>{" "}
           R$ {total.toFixed(2).replace(".", ",")}
         </Text>
-        <Text
-          style={{
-            color: "#22c55e",
-            fontSize: 13,
-            lineHeight: "20px",
-            margin: "4px 0",
-          }}
-        >
+
+        <Text style={{ color: "#008a4e", fontSize: 14 }}>
           <strong>
-            {isMetade ? "Valor da entrada (50%):" : "Valor confirmado:"}
+            {isMetade ? "Valor pago (50%):" : "Valor confirmado:"}
           </strong>{" "}
           R$ {valorEntrada.toFixed(2).replace(".", ",")}
         </Text>
 
         {isMetade && (
-          <Text
-            style={{
-              color: "#fde68a",
-              fontSize: 12,
-              lineHeight: "18px",
-              marginTop: 10,
-            }}
-          >
-            O valor restante poderá ser pago na retirada ou conforme combinado
-            com a Vizinha Salgateria. Guarde este e-mail para consulta futura.
+          <Text style={{ color: "#b34465", fontSize: 13, marginTop: 10 }}>
+            O valor restante será pago na retirada.
           </Text>
         )}
       </Section>
 
-      <Hr style={{ borderColor: "#1f2937", margin: "18px 0" }} />
+      <Hr style={{ borderColor: "#f4b9cf", marginBottom: 24 }} />
 
       <Section>
-        <Text
-          style={{
-            color: "#e5e7eb",
-            fontSize: 14,
-            lineHeight: "22px",
-            marginBottom: 8,
-          }}
+        <Heading
+          as="h3"
+          style={{ fontSize: 16, color: "#c2185b", marginBottom: 8 }}
         >
           📅 Próximos passos
-        </Text>
-        <Text
-          style={{
-            color: "#d1d5db",
-            fontSize: 13,
-            lineHeight: "20px",
-            margin: 0,
-          }}
-        >
-          Em breve entraremos em contato pelo WhatsApp para alinhar detalhes de
-          data, horário e retirada da sua encomenda.
+        </Heading>
+
+        <Text style={{ color: "#7b2349", fontSize: 14, lineHeight: "22px" }}>
+          Vamos entrar em contato via WhatsApp para combinar data, horário e
+          retirada da sua encomenda.
         </Text>
       </Section>
     </VizinhaLayout>

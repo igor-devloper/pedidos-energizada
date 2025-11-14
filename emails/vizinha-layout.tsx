@@ -1,99 +1,112 @@
-// emails/VizinhaLayout.tsx
 import * as React from "react";
 import {
   Html,
   Head,
   Body,
   Container,
+  Img,
   Section,
   Text,
-  Heading,
-  Hr,
-  Img,
 } from "@react-email/components";
 
-interface VizinhaLayoutProps {
-  previewText?: string;
+export interface VizinhaLayoutProps {
   title: string;
-  logoUrl?: string;
+  previewText?: string;
   children: React.ReactNode;
 }
 
 export function VizinhaLayout({
-  previewText,
   title,
-  logoUrl,
+  previewText,
   children,
 }: VizinhaLayoutProps) {
-  const logo =
-    logoUrl || process.env.VIZINHA_LOGO_URL || "https://via.placeholder.com/200x80";
-
   return (
     <Html>
-      <Head />
-      {previewText && <title>{previewText}</title>}
+      <Head>
+        <title>{title}</title>
+      </Head>
+
       <Body
         style={{
           margin: 0,
           padding: 0,
-          backgroundColor: "#050816",
-          fontFamily: "-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif",
+          backgroundColor: "#ffeef7", // rosa bebê
+          fontFamily: "'Inter', sans-serif",
         }}
       >
-        <Container
+        {/* preview (aparece no Gmail) */}
+        <Text
           style={{
-            maxWidth: "640px",
-            margin: "0 auto",
-            padding: "32px 16px",
+            display: "none",
+            visibility: "hidden",
+            opacity: 0,
+            height: 0,
+            overflow: "hidden",
           }}
         >
-          <Section
-            style={{
-              backgroundColor: "#050816",
-              borderRadius: 24,
-              padding: 32,
-              border: "1px solid #272b3b",
-              boxShadow: "0 24px 80px rgba(0,0,0,0.75)",
-            }}
-          >
-            <Section style={{ textAlign: "center", marginBottom: 24 }}>
-              <Img
-                src={logo}
-                width={160}
-                alt="Vizinha Salgateria"
-                style={{ margin: "0 auto 16px", borderRadius: 9999 }}
-              />
-              <Heading
-                style={{
-                  color: "#f9fafb",
-                  fontSize: 22,
-                  fontWeight: 600,
-                  margin: 0,
-                }}
-              >
-                {title}
-              </Heading>
-            </Section>
+          {previewText}
+        </Text>
 
-            <Hr style={{ borderColor: "#1f2937", margin: "16px 0 24px" }} />
-
-            <Section>{children}</Section>
-
-            <Hr style={{ borderColor: "#1f2937", margin: "24px 0 16px" }} />
-
+        <Container
+          style={{
+            maxWidth: 560,
+            margin: "32px auto",
+            backgroundColor: "#ffffff",
+            borderRadius: 20,
+            padding: "32px 28px",
+            border: "2px solid #f7c1d9",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+          }}
+        >
+          {/* LOGO */}
+          <Section style={{ textAlign: "center", marginBottom: 24 }}>
+            <Img
+              src="https://vizinha-salgateria.vercel.app/vizinha-logo.png"
+              width="80"
+              height="80"
+              alt="Vizinha Salgateria"
+              style={{
+                borderRadius: "50%",
+                border: "3px solid #f8b3cb",
+                backgroundColor: "#fff",
+              }}
+            />
             <Text
               style={{
-                color: "#9ca3af",
-                fontSize: 12,
-                lineHeight: "18px",
-                textAlign: "center",
-                marginTop: 0,
+                fontSize: 18,
+                fontWeight: 600,
+                marginTop: 12,
+                color: "#c2185b",
+              }}
+            >
+              Vizinha Salgateria
+            </Text>
+          </Section>
+
+          {/* CONTEÚDO */}
+          <Section>{children}</Section>
+
+          {/* FOOTER */}
+          <Section style={{ marginTop: 32, textAlign: "center" }}>
+            <Text
+              style={{
+                color: "#b34465",
+                fontSize: 13,
+                marginBottom: 6,
               }}
             >
               Vizinha Salgateria · Encomendas de fim de ano
-              <br />
-              Este e-mail foi enviado automaticamente. Em caso de dúvida, fale
-              com a gente pelo WhatsApp informado no site.
+            </Text>
+
+            <Text
+              style={{
+                color: "#d86b8a",
+                fontSize: 12,
+                lineHeight: "18px",
+              }}
+            >
+              Este e-mail foi enviado automaticamente.  
+              Em caso de dúvida, fale conosco pelo WhatsApp informado no site.
             </Text>
           </Section>
         </Container>

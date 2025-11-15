@@ -14,7 +14,20 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { Eye, RefreshCw, Search, CheckCircle2, XCircle, Percent } from "lucide-react";
+import {
+  Eye,
+  RefreshCw,
+  Search,
+  CheckCircle2,
+  XCircle,
+  Percent,
+  TrendingUp,
+  Coins,
+  ShoppingBag,
+  BanknoteX,
+  UtensilsCrossed,
+  Wallet,
+} from "lucide-react";
 
 type EncomendaItem = {
   id: string;
@@ -110,12 +123,12 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    "TODAS" |
-    "AGUARDANDO_PAGAMENTO" |
-    "AGUARDANDO_VALIDACAO" |
-    "PAGO_METADE" |
-    "CONFIRMADO" |
-    "CANCELADO"
+    | "TODAS"
+    | "AGUARDANDO_PAGAMENTO"
+    | "AGUARDANDO_VALIDACAO"
+    | "PAGO_METADE"
+    | "CONFIRMADO"
+    | "CANCELADO"
   >("TODAS");
 
   const [selected, setSelected] = useState<Encomenda | null>(null);
@@ -157,19 +170,84 @@ export default function AdminPage() {
       });
   }, [encomendas, search, statusFilter]);
 
-  const totalPedidos = encomendas.length;
+  // ===== KPIs / MÉTRICAS =====
+  const {
+    totalPedidos,
+    totalPedidosPagos,
+    totalPedidosNaoPagos,
+    totalItens,
+    totalItensPagos,
+    totalValorEncomendas,
+    totalRecebido,
+    receitaAReceber
+  } = useMemo(() => {
+    const stats = {
+      totalPedidos: encomendas.length,
+      totalPedidosPagos: 0,
+      totalPedidosNaoPagos: 0,
+      totalItens: 0,
+      totalItensPagos: 0,
+      totalValorEncomendas: 0,
+      totalRecebido: 0,
+    };
 
-  const totalItens = encomendas.reduce((acc, e) => acc + (e.totalItens || 0), 0);
+    for (const e of encomendas) {
+      const valorTotal =
+        typeof e.valorTotal === "string"
+          ? parseFloat(e.valorTotal)
+          : Number(e.valorTotal || 0);
+      const valorPagoRaw =
+        e.valorPago != null
+          ? typeof e.valorPago === "string"
+            ? parseFloat(e.valorPago)
+            : Number(e.valorPago)
+          : null;
 
-  const totalValor = encomendas.reduce((acc, e) => {
-    const base =
-      typeof e.valorTotal === "string"
-        ? parseFloat(e.valorTotal)
-        : Number(e.valorTotal || 0);
-    return acc + base;
-  }, 0);
+      const isPago =
+        e.status === "PAGO_METADE" || e.status === "CONFIRMADO";
+      const isNaoPago =
+        e.status === "AGUARDANDO_PAGAMENTO" ||
+        e.status === "AGUARDANDO_VALIDACAO";
 
-  const confirmarEncomenda = async (enc: Encomenda, tipo: "METADE" | "TOTAL") => {
+      stats.totalItens += e.totalItens || 0;
+      stats.totalValorEncomendas += valorTotal;
+
+      if (isPago) {
+        stats.totalPedidosPagos += 1;
+        stats.totalItensPagos += e.totalItens || 0;
+
+        let recebido = 0;
+        if (e.status === "PAGO_METADE") {
+          if (valorPagoRaw != null && !Number.isNaN(valorPagoRaw)) {
+            recebido = valorPagoRaw;
+          } else {
+            recebido = valorTotal / 2;
+          }
+        } else {
+          // CONFIRMADO
+          if (valorPagoRaw != null && !Number.isNaN(valorPagoRaw)) {
+            recebido = valorPagoRaw;
+          } else {
+            recebido = valorTotal;
+          }
+        }
+        stats.totalRecebido += recebido;
+      } else if (isNaoPago) {
+        stats.totalPedidosNaoPagos += 1;
+      }
+    }
+    const receitaAReceberRaw =
+      stats.totalValorEncomendas - stats.totalRecebido;
+    return {
+      ...stats,
+      receitaAReceber: receitaAReceberRaw > 0 ? receitaAReceberRaw : 0,
+    };
+  }, [encomendas]);
+
+  const confirmarEncomenda = async (
+    enc: Encomenda,
+    tipo: "METADE" | "TOTAL"
+  ) => {
     try {
       setActing(enc.txid);
       const res = await fetch("/api/encomendas/admin/confirmar", {
@@ -204,7 +282,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           txid: enc.txid,
           aprovado: false,
-          motivo: 'Pagamento divergente.'
+          motivo: "Pagamento divergente.",
         }),
       });
       if (!res.ok) throw new Error();
@@ -241,43 +319,110 @@ export default function AdminPage() {
           </Button>
         </div>
 
-        {/* KPIs */}
-        <div className="grid gap-4 md:grid-cols-3">
+        {/* KPIs estilo "cards" */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Receita recebida */}
           <Card className="border-pink-100 bg-white/90 shadow-sm">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-500">
-                Total de pedidos
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+                Receita total recebida
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold text-slate-900">
-                {totalPedidos}
+                {currency(totalRecebido)}
+              </p>
+              <p className="text-[11px] text-emerald-600">
+                Somente encomendas pagas (total ou parcial)
               </p>
             </CardContent>
           </Card>
 
+          {/* Valor total das encomendas */}
           <Card className="border-pink-100 bg-white/90 shadow-sm">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-500">
-                Total de itens encomendados
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold text-slate-900">
-                {totalItens}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-pink-100 bg-white/90 shadow-sm">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-500">
-                Valor potencial (pedido cheio)
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <Coins className="h-4 w-4 text-pink-600" />
+                Valor total das encomendas
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold text-pink-700">
-                {currency(totalValor)}
+                {currency(totalValorEncomendas)}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Soma de todas as encomendas registradas
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Pedidos pagos */}
+          <Card className="border-pink-100 bg-white/90 shadow-sm">
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <ShoppingBag className="h-4 w-4 text-emerald-500" />
+                Encomendas pagas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold text-slate-900">
+                {totalPedidosPagos}
+              </p>
+              <p className="text-[11px] text-emerald-600">
+                De {totalPedidos} encomendas no total
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Pedidos não pagos */}
+          <Card className="border-pink-100 bg-white/90 shadow-sm">
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <BanknoteX className="h-4 w-4 text-red-500" />
+                Encomendas não pagas
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold text-slate-900">
+                {totalPedidosNaoPagos}
+              </p>
+              <p className="text-[11px] text-red-500">
+                Aguardando pagamento/validação
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Total de itens pagos */}
+          <Card className="border-pink-100 bg-white/90 shadow-sm">
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <UtensilsCrossed className="h-4 w-4 text-emerald-500" />
+                Total de itens pagos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold text-slate-900">
+                {totalItensPagos}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                De {totalItens} itens encomendados no total
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border-pink-100 bg-white/90 shadow-sm">
+            <CardHeader className="pb-1 flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-slate-500 flex items-center gap-1">
+                <Wallet className="h-4 w-4 text-amber-500" />
+                Receita a receber
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold text-slate-900">
+                {currency(receitaAReceber)}
+              </p>
+              <p className="text-[11px] text-amber-600">
+                Total das encomendas ainda não recebidas
               </p>
             </CardContent>
           </Card>
@@ -329,9 +474,7 @@ export default function AdminPage() {
         {/* Tabela */}
         <Card className="border-pink-100 bg-white/95 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-slate-800">
-              Encomendas
-            </CardTitle>
+            <CardTitle className="text-slate-800">Encomendas</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -419,11 +562,9 @@ export default function AdminPage() {
                               <Eye className="h-4 w-4" />
                             </Button>
 
-                            {(
-                              enc.status === "AGUARDANDO_VALIDACAO" ||
+                            {(enc.status === "AGUARDANDO_VALIDACAO" ||
                               enc.status === "PAGO_METADE" ||
-                              enc.status === "AGUARDANDO_PAGAMENTO"
-                            ) && (
+                              enc.status === "AGUARDANDO_PAGAMENTO") && (
                                 <>
                                   <Button
                                     size="icon-sm"
@@ -512,7 +653,9 @@ export default function AdminPage() {
                   </p>
                   {selected.valorPago != null && (
                     <p>
-                      <span className="font-semibold">Valor pago declarado:</span>{" "}
+                      <span className="font-semibold">
+                        Valor pago declarado:
+                      </span>{" "}
                       {currency(
                         typeof selected.valorPago === "string"
                           ? parseFloat(selected.valorPago)
@@ -525,9 +668,7 @@ export default function AdminPage() {
                 <Separator className="my-3 bg-pink-100" />
 
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-800">
-                    Itens
-                  </p>
+                  <p className="text-sm font-semibold text-slate-800">Itens</p>
                   <ul className="space-y-1 text-sm text-slate-700">
                     {selected.itens.map((i) => (
                       <li

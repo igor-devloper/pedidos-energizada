@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata: Metadata = {
   title: "Vizinha Salgateria - Encomendas de Fim de Ano",
@@ -42,6 +43,7 @@ export default function RootLayout({
         </footer>
 
         <Toaster richColors position="top-center" />
+        <Analytics/>
       </body>
     </html>
   );

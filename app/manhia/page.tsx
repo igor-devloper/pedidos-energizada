@@ -608,18 +608,23 @@ export default function AdminPage() {
         </Card>
 
         {/* Dialog detalhes */}
+        {/* Dialog detalhes */}
         <Dialog
           open={!!selected}
           onOpenChange={(open) => !open && setSelected(null)}
         >
-          <DialogContent className="max-w-lg border-pink-100 bg-white">
+          <DialogContent
+            className="w-full max-w-lg max-h-[80vh] overflow-y-auto border-pink-100 bg-white"
+          >
             <DialogHeader>
               <DialogTitle className="text-pink-700">
                 Detalhes da encomenda
               </DialogTitle>
             </DialogHeader>
+
             {selected && (
-              <>
+              <div className="space-y-4">
+                {/* Dados principais */}
                 <div className="space-y-2 text-sm text-slate-700">
                   <p>
                     <span className="font-semibold">Cliente:</span>{" "}
@@ -665,10 +670,13 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <Separator className="my-3 bg-pink-100" />
+                <Separator className="bg-pink-100" />
 
+                {/* Itens */}
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-slate-800">Itens</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Itens
+                  </p>
                   <ul className="space-y-1 text-sm text-slate-700">
                     {selected.itens.map((i) => (
                       <li
@@ -683,10 +691,34 @@ export default function AdminPage() {
                     ))}
                   </ul>
                 </div>
-              </>
+
+                {/* Comprovante de pagamento */}
+                {selected.comprovanteBase64 && (
+                  <>
+                    <Separator className="bg-pink-100" />
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold text-slate-800">
+                        Comprovante de pagamento
+                      </p>
+                      <div className="rounded-md border border-pink-100 bg-pink-50/40 p-2">
+                        <img
+                          src={
+                            selected.comprovanteBase64.startsWith("data:")
+                              ? selected.comprovanteBase64
+                              : `data:image/jpeg;base64,${selected.comprovanteBase64}`
+                          }
+                          alt={`Comprovante de pagamento de ${selected.nome}`}
+                          className="max-h-80 w-full rounded object-contain"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </DialogContent>
         </Dialog>
+
       </div>
     </main>
   );

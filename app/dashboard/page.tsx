@@ -24,7 +24,6 @@ import {
   RefreshCw,
   Search,
   CheckCircle2,
-  XCircle,
   BanknoteX,
   Wallet,
   Shirt,
@@ -42,6 +41,8 @@ import {
   Pie,
   PieChart,
   XAxis,
+  YAxis,
+  Cell,
 } from "recharts";
 
 import {
@@ -133,22 +134,22 @@ const humanModelo = (m: Modelo) => {
 const humanTipoPedido = (t: TipoPedido) =>
   t === "KIT" ? "Kit (Camisa + Short)" : "Somente camisa";
 
-// ==== CONFIG DOS GRÁFICOS (shadcn) ====
-const kitBlusaConfig = {
+// ==== CONFIG DOS GRÁFICOS (shadcn) - tema amarelo Energizada ====
+const tipoChartConfig = {
   kit: {
-    label: "Kit (Camisa + Short)",
-    color: "var(--chart-1)",
+    label: "Kit",
+    color: "#FACC15", // amarelo principal
   },
   blusa: {
-    label: "Somente camisa",
-    color: "var(--chart-2)",
+    label: "Blusa",
+    color: "#FBBF24", // amarelo secundário
   },
 } satisfies ChartConfig;
 
-const modelosConfig = {
+const modeloChartConfig = {
   pedidos: {
     label: "Pedidos",
-    color: "var(--chart-1)",
+    color: "#FACC15",
   },
 } satisfies ChartConfig;
 
@@ -286,20 +287,18 @@ export default function AdminPage() {
     return stats;
   }, [encomendas]);
 
-  // DADOS PARA GRÁFICOS (no padrão shadcn)
+  // DADOS PARA GRÁFICOS (padrão shadcn + amarelo)
   const pieTipoData = useMemo(
     () => [
       {
         key: "kit",
-        label: "Kit",
+        tipo: "Kit",
         value: tipoCounts.KIT,
-        fill: "var(--color-kit)",
       },
       {
         key: "blusa",
-        label: "Blusa",
+        tipo: "Blusa",
         value: tipoCounts.BLUSA,
-        fill: "var(--color-blusa)",
       },
     ],
     [tipoCounts]
@@ -394,7 +393,7 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <Shirt className="h-4 w-4 text-sky-400" />
+                <Shirt className="h-4 w-4 text-yellow-400" />
                 Total de pedidos
               </CardTitle>
             </CardHeader>
@@ -411,17 +410,17 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <PieChartIcon className="h-4 w-4 text-sky-400" />
+                <PieChartIcon className="h-4 w-4 text-yellow-400" />
                 Kits x Blusas
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-100">
-                <span className="font-semibold text-sky-400">
+                <span className="font-semibold text-yellow-400">
                   {totalKits}
                 </span>{" "}
                 kits •{" "}
-                <span className="font-semibold text-sky-400">
+                <span className="font-semibold text-yellow-400">
                   {totalBlusas}
                 </span>{" "}
                 blusas
@@ -435,7 +434,7 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <BarChart3 className="h-4 w-4 text-sky-400" />
+                <BarChart3 className="h-4 w-4 text-yellow-400" />
                 Valor total dos pedidos
               </CardTitle>
             </CardHeader>
@@ -452,7 +451,7 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <Wallet className="h-4 w-4 text-sky-400" />
+                <Wallet className="h-4 w-4 text-yellow-400" />
                 Recebido x a receber
               </CardTitle>
             </CardHeader>
@@ -473,42 +472,67 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* GRÁFICOS (estilo shadcn) */}
+        {/* GRÁFICOS */}
         <div className="grid gap-4 md:grid-cols-2">
           {/* Donut Kit x Blusa */}
-          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <PieChartIcon className="h-4 w-4 text-sky-400" />
+          <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
+                <PieChartIcon className="h-4 w-4 text-yellow-400" />
                 Distribuição de pedidos (Kit x Blusa)
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex h-64 items-center justify-center">
+
+            <CardContent className="pb-6 pt-0">
               {totalPedidos === 0 ? (
-                <div className="text-xs text-slate-500">
+                <div className="flex h-64 items-center justify-center text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
               ) : (
                 <ChartContainer
-                  config={kitBlusaConfig}
-                  className="mx-auto aspect-square w-full max-w-[260px]"
+                  config={tipoChartConfig}
+                  className="mx-auto h-64 w-full max-w-[320px]"
                 >
                   <PieChart>
                     <ChartTooltip
                       cursor={false}
-                      content={<ChartTooltipContent hideLabel />}
+                      content={
+                        <ChartTooltipContent
+                          hideLabel
+                          className="bg-slate-900/95 border-slate-700 text-slate-50 shadow-xl"
+                        />
+                      }
                     />
                     <Pie
                       data={pieTipoData}
                       dataKey="value"
-                      nameKey="label"
+                      nameKey="tipo"
                       innerRadius={70}
-                      strokeWidth={5}
+                      outerRadius={100}
+                      paddingAngle={4}
+                      strokeWidth={4}
                     >
+                      {pieTipoData.map((entry) => (
+                        <Cell
+                          key={entry.key}
+                          fill={`var(--color-${entry.key})`}
+                        />
+                      ))}
+
                       <Label
                         content={({ viewBox }) => {
-                          if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox))
+                          if (
+                            !viewBox ||
+                            !("cx" in viewBox) ||
+                            !("cy" in viewBox)
+                          )
                             return null;
+
+                          const total = pieTipoData.reduce(
+                            (acc, cur) => acc + cur.value,
+                            0
+                          );
+
                           return (
                             <text
                               x={viewBox.cx}
@@ -521,11 +545,11 @@ export default function AdminPage() {
                                 y={viewBox.cy}
                                 className="fill-slate-50 text-2xl font-bold"
                               >
-                                {totalPedidos}
+                                {total}
                               </tspan>
                               <tspan
                                 x={viewBox.cx}
-                                y={(viewBox.cy || 0) + 20}
+                                y={(viewBox.cy || 0) + 18}
                                 className="fill-slate-400 text-xs"
                               >
                                 pedidos
@@ -542,47 +566,64 @@ export default function AdminPage() {
           </Card>
 
           {/* Bar por modelo */}
-          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
-            <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <BarChart3 className="h-4 w-4 text-sky-400" />
+          <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
+                <BarChart3 className="h-4 w-4 text-yellow-400" />
                 Pedidos por modelo de camisa
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64">
+
+            <CardContent className="pb-6 pt-0">
               {totalPedidos === 0 ? (
-                <div className="flex h-full items-center justify-center text-xs text-slate-500">
+                <div className="flex h-64 items-center justify-center text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
               ) : (
-                <ChartContainer config={modelosConfig}>
+                <ChartContainer
+                  config={modeloChartConfig}
+                  className="h-64 w-full"
+                >
                   <BarChart
-                    accessibilityLayer
                     data={barModeloData}
-                    margin={{ top: 20, left: 0, right: 0 }}
+                    margin={{ top: 24, left: 16, right: 16, bottom: 8 }}
                   >
-                    <CartesianGrid vertical={false} stroke="#1f2937" />
+                    <CartesianGrid vertical={false} stroke="#111827" />
                     <XAxis
                       dataKey="modelo"
                       tickLine={false}
-                      tickMargin={10}
                       axisLine={false}
-                      tick={{ fill: "#9ca3af", fontSize: 11 }}
+                      tickMargin={10}
+                      stroke="#9ca3af"
+                      fontSize={11}
                     />
-                    <ChartTooltip 
-                      cursor={{ fill: "rgba(15,23,42,0.6)" }}
-                      content={<ChartTooltipContent hideLabel />}
+                    <YAxis
+                      stroke="#6b7280"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      allowDecimals={false}
                     />
+
+                    <ChartTooltip
+                      cursor={false}
+                      content={
+                        <ChartTooltipContent
+                          hideLabel
+                          className="bg-slate-900/95 border-slate-700 text-slate-100 shadow-xl"
+                        />
+                      }
+                    />
+
                     <Bar
                       dataKey="pedidos"
-                      fill="var(--color-pedidos)"
                       radius={8}
+                      fill="var(--color-pedidos)"
                     >
                       <LabelList
+                        dataKey="pedidos"
                         position="top"
-                        offset={12}
-                        className="fill-slate-100"
-                        fontSize={12}
+                        className="fill-slate-100 text-xs"
                       />
                     </Bar>
                   </BarChart>
@@ -622,7 +663,7 @@ export default function AdminPage() {
                   className={
                     statusFilter === opt.id
                       ? "bg-sky-500 text-slate-900 hover:bg-sky-400 border-sky-400"
-                      : "border-slate-700 text-slate-200 hover:bg-slate-800"
+                      : "border-slate-700 text-slate-900 hover:bg-slate-800"
                   }
                   onClick={() =>
                     setStatusFilter(opt.id as typeof statusFilter)

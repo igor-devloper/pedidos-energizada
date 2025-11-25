@@ -61,7 +61,7 @@ export default function UniformesPage() {
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center justify-between text-yellow-300 text-lg">
                 <span>Kit Completo (Camisa + Short)</span>
-                <span className="text-sm font-normal text-yellow-200">
+                <span className="text-sm font-normal text-yellow-200 whitespace-nowrap">
                   R$ 90,00
                 </span>
               </CardTitle>

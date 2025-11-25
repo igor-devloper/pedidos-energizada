@@ -22,6 +22,7 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const KIT_PRICE = 90;
 const SHIRT_PRICE = 55;
@@ -35,34 +36,41 @@ function PedidosContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // 🔹 lê valores da URL
-  const modeloFromUrl = (searchParams.get("modelo") || "") as Modelo;
-  let tipoFromUrl = (searchParams.get("tipo") || "") as TipoPedido | "SHORT";
-
-  // se vier "SHORT" na URL, ignora (não vendemos só o short)
-  if (tipoFromUrl === "SHORT") {
-    tipoFromUrl = "";
-  }
+  const tipoFromUrl = (searchParams.get("tipo") || "").toUpperCase();
+  const initialTipo: TipoPedido =
+    tipoFromUrl === "KIT" || tipoFromUrl === "BLUSA" ? (tipoFromUrl as TipoPedido) : "";
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
 
-  // 🔹 inicia já com o que veio na URL (se tiver)
-  const [modelo, setModelo] = useState<Modelo>(modeloFromUrl || "");
-  const [tipoPedido, setTipoPedido] = useState<TipoPedido>(
-    (tipoFromUrl as TipoPedido) || ""
-  );
+  const [modelo, setModelo] = useState<Modelo>("");
+  const [tipoPedido, setTipoPedido] = useState<TipoPedido>(initialTipo);
   const [tamanho, setTamanho] = useState<Tamanho>("");
 
   const [nomeCamisa, setNomeCamisa] = useState("");
-  const [numeroCamisa, setNumeroCamisa] = useState("");
+
+  // NOVOS CAMPOS: já tem camisa + opções de número
+  const [jaTemCamisa, setJaTemCamisa] = useState(false);
+  const [numero1, setNumero1] = useState("");
+  const [numero2, setNumero2] = useState("");
+  const [numero3, setNumero3] = useState("");
+  const [numeroAtual, setNumeroAtual] = useState("");
 
   const valor = useMemo(() => {
     if (tipoPedido === "KIT") return KIT_PRICE;
     if (tipoPedido === "BLUSA") return SHIRT_PRICE;
     return 0;
   }, [tipoPedido]);
+
+  const normalizaNumero = (v: string) => v.replace(/\D/g, "").slice(0, 2);
+
+  const validaNumero = (v: string) => {
+    const limpo = normalizaNumero(v);
+    if (!limpo) return false;
+    const n = Number(limpo);
+    return n >= 0 && n <= 99;
+  };
 
   const handleSubmit = async () => {
     if (!nome || !email || !telefone || !modelo || !tipoPedido || !tamanho) {
@@ -75,21 +83,32 @@ function PedidosContent() {
       return;
     }
 
-    if (!numeroCamisa.trim()) {
-      toast.error("Informe o número da camisa.");
-      return;
-    }
-
-    const numeroLimpo = numeroCamisa.replace(/\D/g, "");
-    if (!numeroLimpo || Number(numeroLimpo) < 0 || Number(numeroLimpo) > 99) {
-      toast.error("Número da camisa deve ser entre 0 e 99.");
-      return;
+    if (jaTemCamisa) {
+      if (!validaNumero(numeroAtual)) {
+        toast.error("Informe o número atual da camisa (entre 0 e 99).");
+        return;
+      }
+    } else {
+      if (!validaNumero(numero1) || !validaNumero(numero2) || !validaNumero(numero3)) {
+        toast.error("Preencha as 3 opções de número entre 0 e 99.");
+        return;
+      }
     }
 
     if (valor <= 0) {
       toast.error("Escolha se quer Kit ou só a Blusa.");
       return;
     }
+
+    const numero1Limpo = normalizaNumero(numero1);
+    const numero2Limpo = normalizaNumero(numero2);
+    const numero3Limpo = normalizaNumero(numero3);
+    const numeroAtualLimpo = normalizaNumero(numeroAtual);
+
+    // número principal que vamos gravar (pra manter compatível com o backend atual)
+    const numeroCamisaPrincipal = jaTemCamisa
+      ? numeroAtualLimpo
+      : numero1Limpo;
 
     try {
       const res = await fetch("/api/pedidos", {
@@ -104,7 +123,12 @@ function PedidosContent() {
           tipoPedido,
           valorTotal: valor,
           nomeCamisa,
-          numeroCamisa: numeroLimpo,
+          numeroCamisa: numeroCamisaPrincipal,
+          jaTemCamisa,
+          numeroOpcao1: numero1Limpo || null,
+          numeroOpcao2: jaTemCamisa ? null : numero2Limpo || null,
+          numeroOpcao3: jaTemCamisa ? null : numero3Limpo || null,
+          numeroCamisaAtual: jaTemCamisa ? numeroAtualLimpo : null,
         }),
       });
 
@@ -226,10 +250,7 @@ function PedidosContent() {
                 <section className="space-y-3">
                   <div>
                     <Label className="text-xs text-blue-200">Modelo da camisa *</Label>
-                    <Select
-                      value={modelo}
-                      onValueChange={(v) => setModelo(v as Modelo)}
-                    >
+                    <Select onValueChange={(v) => setModelo(v as Modelo)}>
                       <SelectTrigger className="mt-1 bg-blue-900/70 border-blue-700 text-white focus-visible:ring-yellow-400">
                         <SelectValue placeholder="Selecione o modelo" />
                       </SelectTrigger>
@@ -246,7 +267,7 @@ function PedidosContent() {
                   <div>
                     <Label className="text-xs text-blue-200">Tipo do pedido *</Label>
                     <Select
-                      value={tipoPedido}
+                      value={tipoPedido || undefined}
                       onValueChange={(v) => setTipoPedido(v as TipoPedido)}
                     >
                       <SelectTrigger className="mt-1 bg-blue-900/70 border-blue-700 text-white focus-visible:ring-yellow-400">
@@ -263,10 +284,7 @@ function PedidosContent() {
 
                   <div>
                     <Label className="text-xs text-blue-200">Tamanho *</Label>
-                    <Select
-                      value={tamanho}
-                      onValueChange={(v) => setTamanho(v as Tamanho)}
-                    >
+                    <Select onValueChange={(v) => setTamanho(v as Tamanho)}>
                       <SelectTrigger className="mt-1 bg-blue-900/70 border-blue-700 text-white focus-visible:ring-yellow-400">
                         <SelectValue placeholder="Selecione o tamanho" />
                       </SelectTrigger>
@@ -302,24 +320,93 @@ function PedidosContent() {
                     </p>
                   </div>
 
-                  <div>
-                    <Label className="text-xs text-blue-200">
-                      Número da camisa *
-                    </Label>
-                    <Input
-                      value={numeroCamisa}
-                      onChange={(e) =>
-                        setNumeroCamisa(
-                          e.target.value.replace(/\D/g, "").slice(0, 2)
-                        )
-                      }
-                      placeholder="Ex: 10"
-                      className="mt-1 bg-blue-900/70 border-blue-700 text-white placeholder:text-blue-300 focus-visible:ring-yellow-400 w-24"
+                  {/* Caixinha "já tenho camisa" */}
+                  <div className="flex items-start gap-2 mt-2">
+                    <Checkbox
+                      id="jaTemCamisa"
+                      checked={jaTemCamisa}
+                      onCheckedChange={(v) => setJaTemCamisa(v === true)}
+                      className="mt-0.5 border-blue-400 data-[state=checked]:bg-yellow-400 data-[state=checked]:border-yellow-400"
                     />
-                    <p className="mt-1 text-[10px] text-blue-300">
-                      Número entre 0 e 99.
-                    </p>
+                    <div>
+                      <Label
+                        htmlFor="jaTemCamisa"
+                        className="text-xs text-blue-100 cursor-pointer"
+                      >
+                        Já tenho a camisa da Energizada
+                      </Label>
+                      <p className="text-[10px] text-blue-300">
+                        Se você já possui a camisa oficial, marque essa opção
+                        e informe o número que você já utiliza.
+                      </p>
+                    </div>
                   </div>
+
+                  {jaTemCamisa ? (
+                    <div>
+                      <Label className="text-xs text-blue-200">
+                        Número atual da sua camisa *
+                      </Label>
+                      <Input
+                        value={numeroAtual}
+                        onChange={(e) =>
+                          setNumeroAtual(normalizaNumero(e.target.value))
+                        }
+                        placeholder="Ex: 10"
+                        className="mt-1 bg-blue-900/70 border-blue-700 text-white placeholder:text-blue-300 focus-visible:ring-yellow-400 w-24"
+                      />
+                      <p className="mt-1 text-[10px] text-blue-300">
+                        Número entre 0 e 99 (o mesmo que já está na sua camisa).
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-blue-200">
+                        Opções de número para a camisa *
+                      </Label>
+                      <p className="text-[10px] text-blue-300">
+                        Informe 3 opções de número (caso algum já esteja sendo usado).
+                      </p>
+                      <div className="flex gap-3">
+                        <div>
+                          <p className="text-[10px] text-blue-200 mb-1">Opção 1</p>
+                          <Input
+                            value={numero1}
+                            onChange={(e) =>
+                              setNumero1(normalizaNumero(e.target.value))
+                            }
+                            placeholder="10"
+                            className="bg-blue-900/70 border-blue-700 text-white placeholder:text-blue-300 focus-visible:ring-yellow-400 w-20"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-blue-200 mb-1">Opção 2</p>
+                          <Input
+                            value={numero2}
+                            onChange={(e) =>
+                              setNumero2(normalizaNumero(e.target.value))
+                            }
+                            placeholder="7"
+                            className="bg-blue-900/70 border-blue-700 text-white placeholder:text-blue-300 focus-visible:ring-yellow-400 w-20"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-blue-200 mb-1">Opção 3</p>
+                          <Input
+                            value={numero3}
+                            onChange={(e) =>
+                              setNumero3(normalizaNumero(e.target.value))
+                            }
+                            placeholder="22"
+                            className="bg-blue-900/70 border-blue-700 text-white placeholder:text-blue-300 focus-visible:ring-yellow-400 w-20"
+                          />
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[10px] text-blue-300">
+                        Números entre 0 e 99. A atlética vai escolher um disponível.
+                      </p>
+                    </div>
+                  )}
                 </section>
               </div>
 
@@ -346,10 +433,23 @@ function PedidosContent() {
                       <span className="font-semibold">Nome atrás: </span>
                       {nomeCamisa || "-"}
                     </p>
-                    <p className="text-sm text-white">
-                      <span className="font-semibold">Número: </span>
-                      {numeroCamisa || "-"}
-                    </p>
+
+                    {jaTemCamisa ? (
+                      <p className="text-sm text-white">
+                        <span className="font-semibold">Número: </span>
+                        {numeroAtual || "-"}{" "}
+                        <span className="text-[11px] text-yellow-200">
+                          (já tenho camisa)
+                        </span>
+                      </p>
+                    ) : (
+                      <p className="text-sm text-white">
+                        <span className="font-semibold">Nº preferidos: </span>
+                        {[numero1 || "-", numero2 || "-", numero3 || "-"].join(
+                          " / "
+                        )}
+                      </p>
+                    )}
 
                     <p className="mt-2 text-sm font-semibold text-yellow-300">
                       Total:

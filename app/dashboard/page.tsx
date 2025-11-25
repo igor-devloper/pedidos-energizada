@@ -1,7 +1,13 @@
+// app/admin/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -26,19 +32,24 @@ import {
   PieChart as PieChartIcon,
 } from "lucide-react";
 
-// recharts
+// recharts + shadcn charts
 import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  BarChart,
   Bar,
-  XAxis,
-  YAxis,
+  BarChart,
   CartesianGrid,
+  Label,
+  LabelList,
+  Pie,
+  PieChart,
+  XAxis,
 } from "recharts";
+
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
 
 /** TIPOS DO PEDIDO (uniformes) */
 type Modelo = "BRANCA" | "AZUL" | "AZUL_SEM_MANGA";
@@ -121,6 +132,25 @@ const humanModelo = (m: Modelo) => {
 
 const humanTipoPedido = (t: TipoPedido) =>
   t === "KIT" ? "Kit (Camisa + Short)" : "Somente camisa";
+
+// ==== CONFIG DOS GRÁFICOS (shadcn) ====
+const kitBlusaConfig = {
+  kit: {
+    label: "Kit (Camisa + Short)",
+    color: "var(--chart-1)",
+  },
+  blusa: {
+    label: "Somente camisa",
+    color: "var(--chart-2)",
+  },
+} satisfies ChartConfig;
+
+const modelosConfig = {
+  pedidos: {
+    label: "Pedidos",
+    color: "var(--chart-1)",
+  },
+} satisfies ChartConfig;
 
 export default function AdminPage() {
   const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
@@ -256,25 +286,33 @@ export default function AdminPage() {
     return stats;
   }, [encomendas]);
 
-  // DADOS PARA GRÁFICOS (cores com mais contraste)
+  // DADOS PARA GRÁFICOS (no padrão shadcn)
   const pieTipoData = useMemo(
     () => [
-      { name: "Kits", value: tipoCounts.KIT },
-      { name: "Blusas", value: tipoCounts.BLUSA },
+      {
+        key: "kit",
+        label: "Kit",
+        value: tipoCounts.KIT,
+        fill: "var(--color-kit)",
+      },
+      {
+        key: "blusa",
+        label: "Blusa",
+        value: tipoCounts.BLUSA,
+        fill: "var(--color-blusa)",
+      },
     ],
     [tipoCounts]
   );
 
   const barModeloData = useMemo(
     () => [
-      { name: "Branca", value: modeloCounts.BRANCA },
-      { name: "Azul", value: modeloCounts.AZUL },
-      { name: "Azul s/ manga", value: modeloCounts.AZUL_SEM_MANGA },
+      { modelo: "Branca", pedidos: modeloCounts.BRANCA },
+      { modelo: "Azul", pedidos: modeloCounts.AZUL },
+      { modelo: "Azul s/ manga", pedidos: modeloCounts.AZUL_SEM_MANGA },
     ],
     [modeloCounts]
   );
-
-  const COLORS = ["#FACC15", "#3B82F6", "#22C55E"];
 
   const confirmarEncomenda = async (
     enc: Encomenda,
@@ -328,15 +366,15 @@ export default function AdminPage() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-4 py-8">
+    <main className="min-h-screen bg-[#020817] px-4 py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         {/* TÍTULO */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-yellow-300 drop-shadow">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-50">
               Painel de Pedidos — Uniformes Energizada
             </h1>
-            <p className="text-sm text-slate-300">
+            <p className="text-sm text-slate-400">
               Acompanhe pedidos, pagamentos e distribuição de kits e camisas.
             </p>
           </div>
@@ -344,7 +382,7 @@ export default function AdminPage() {
           <Button
             variant="outline"
             onClick={fetchEncomendas}
-            className="border-slate-600 text-slate-100 hover:bg-slate-800 bg-slate-900"
+            className="border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             Atualizar
@@ -353,15 +391,15 @@ export default function AdminPage() {
 
         {/* KPIs */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <Shirt className="h-4 w-4 text-yellow-300" />
+                <Shirt className="h-4 w-4 text-sky-400" />
                 Total de pedidos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-yellow-300">
+              <p className="text-2xl font-semibold text-slate-50">
                 {totalPedidos}
               </p>
               <p className="text-[11px] text-slate-400">
@@ -370,20 +408,20 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <PieChartIcon className="h-4 w-4 text-yellow-300" />
+                <PieChartIcon className="h-4 w-4 text-sky-400" />
                 Kits x Blusas
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-100">
-                <span className="font-semibold text-yellow-300">
+                <span className="font-semibold text-sky-400">
                   {totalKits}
                 </span>{" "}
                 kits •{" "}
-                <span className="font-semibold text-yellow-300">
+                <span className="font-semibold text-sky-400">
                   {totalBlusas}
                 </span>{" "}
                 blusas
@@ -394,15 +432,15 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <BarChart3 className="h-4 w-4 text-yellow-300" />
+                <BarChart3 className="h-4 w-4 text-sky-400" />
                 Valor total dos pedidos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-yellow-300">
+              <p className="text-2xl font-semibold text-slate-50">
                 {currency(totalValorEncomendas)}
               </p>
               <p className="text-[11px] text-slate-400">
@@ -411,10 +449,10 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <Wallet className="h-4 w-4 text-yellow-300" />
+                <Wallet className="h-4 w-4 text-sky-400" />
                 Recebido x a receber
               </CardTitle>
             </CardHeader>
@@ -435,104 +473,133 @@ export default function AdminPage() {
           </Card>
         </div>
 
-        {/* GRÁFICOS */}
+        {/* GRÁFICOS (estilo shadcn) */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Pizza Kit x Blusa */}
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          {/* Donut Kit x Blusa */}
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <PieChartIcon className="h-4 w-4 text-yellow-300" />
+                <PieChartIcon className="h-4 w-4 text-sky-400" />
                 Distribuição de pedidos (Kit x Blusa)
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64">
+            <CardContent className="flex h-64 items-center justify-center">
               {totalPedidos === 0 ? (
-                <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                <div className="text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
+                <ChartContainer
+                  config={kitBlusaConfig}
+                  className="mx-auto aspect-square w-full max-w-[260px]"
+                >
                   <PieChart>
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
                     <Pie
                       data={pieTipoData}
                       dataKey="value"
-                      nameKey="name"
-                      innerRadius={40}
-                      outerRadius={70}
-                      paddingAngle={4}
+                      nameKey="label"
+                      innerRadius={70}
+                      strokeWidth={5}
                     >
-                      {pieTipoData.map((_, idx) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
+                      <Label
+                        content={({ viewBox }) => {
+                          if (!viewBox || !("cx" in viewBox) || !("cy" in viewBox))
+                            return null;
+                          return (
+                            <text
+                              x={viewBox.cx}
+                              y={viewBox.cy}
+                              textAnchor="middle"
+                              dominantBaseline="middle"
+                            >
+                              <tspan
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                className="fill-slate-50 text-2xl font-bold"
+                              >
+                                {totalPedidos}
+                              </tspan>
+                              <tspan
+                                x={viewBox.cx}
+                                y={(viewBox.cy || 0) + 20}
+                                className="fill-slate-400 text-xs"
+                              >
+                                pedidos
+                              </tspan>
+                            </text>
+                          );
+                        }}
+                      />
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#020617",
-                        borderRadius: 8,
-                        borderColor: "#1e293b",
-                        fontSize: 12,
-                        color: "#e5e7eb",
-                      }}
-                      formatter={(value: any, name: any) => [
-                        `${value} pedidos`,
-                        name,
-                      ]}
-                    />
                   </PieChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               )}
             </CardContent>
           </Card>
 
-          {/* Barras por modelo */}
-          <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+          {/* Bar por modelo */}
+          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <BarChart3 className="h-4 w-4 text-yellow-300" />
+                <BarChart3 className="h-4 w-4 text-sky-400" />
                 Pedidos por modelo de camisa
               </CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               {totalPedidos === 0 ? (
-                <div className="flex h-full items-center justify-center text-xs text-slate-400">
+                <div className="flex h-full items-center justify-center text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={barModeloData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="name" stroke="#e5e7eb" fontSize={11} />
-                    <YAxis stroke="#e5e7eb" fontSize={11} allowDecimals={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#020617",
-                        borderRadius: 8,
-                        borderColor: "#1e293b",
-                        fontSize: 12,
-                        color: "#e5e7eb",
-                      }}
-                      formatter={(value: any) => [`${value} pedidos`, "Qtde"]}
+                <ChartContainer config={modelosConfig}>
+                  <BarChart
+                    accessibilityLayer
+                    data={barModeloData}
+                    margin={{ top: 20, left: 0, right: 0 }}
+                  >
+                    <CartesianGrid vertical={false} stroke="#1f2937" />
+                    <XAxis
+                      dataKey="modelo"
+                      tickLine={false}
+                      tickMargin={10}
+                      axisLine={false}
+                      tick={{ fill: "#9ca3af", fontSize: 11 }}
                     />
-                    <Bar dataKey="value">
-                      {barModeloData.map((_, idx) => (
-                        <Cell key={idx} fill={COLORS[idx % COLORS.length]} />
-                      ))}
+                    <ChartTooltip 
+                      cursor={{ fill: "rgba(15,23,42,0.6)" }}
+                      content={<ChartTooltipContent hideLabel />}
+                    />
+                    <Bar
+                      dataKey="pedidos"
+                      fill="var(--color-pedidos)"
+                      radius={8}
+                    >
+                      <LabelList
+                        position="top"
+                        offset={12}
+                        className="fill-slate-100"
+                        fontSize={12}
+                      />
                     </Bar>
                   </BarChart>
-                </ResponsiveContainer>
+                </ChartContainer>
               )}
             </CardContent>
           </Card>
         </div>
 
         {/* FILTROS */}
-        <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+        <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
           <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
-              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Buscar por nome, telefone ou e-mail"
-                className="pl-8 border-slate-600 bg-slate-950 text-slate-100 placeholder:text-slate-400 focus-visible:ring-yellow-400"
+                className="pl-8 border-slate-700 bg-slate-950 text-slate-50 placeholder:text-slate-500 focus-visible:ring-sky-500"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -554,8 +621,8 @@ export default function AdminPage() {
                   variant={statusFilter === opt.id ? "default" : "outline"}
                   className={
                     statusFilter === opt.id
-                      ? "bg-yellow-400 text-slate-900 hover:bg-yellow-500 border-yellow-300"
-                      : "border-slate-600 text-slate-900 hover:bg-slate-800"
+                      ? "bg-sky-500 text-slate-900 hover:bg-sky-400 border-sky-400"
+                      : "border-slate-700 text-slate-200 hover:bg-slate-800"
                   }
                   onClick={() =>
                     setStatusFilter(opt.id as typeof statusFilter)
@@ -569,13 +636,13 @@ export default function AdminPage() {
         </Card>
 
         {/* TABELA */}
-        <Card className="border-slate-700 bg-slate-900/90 text-slate-50 shadow-md">
+        <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
           <CardHeader>
             <CardTitle className="text-slate-50">Pedidos</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-700 text-xs text-slate-300">
+              <thead className="border-b border-slate-800 text-xs text-slate-400">
                 <tr>
                   <th className="py-2 pr-4 text-left">Data</th>
                   <th className="py-2 pr-4 text-left">Cliente</th>
@@ -590,7 +657,7 @@ export default function AdminPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="py-8 text-center text-slate-400"
+                      className="py-8 text-center text-slate-500"
                     >
                       Carregando…
                     </td>
@@ -599,7 +666,7 @@ export default function AdminPage() {
                   <tr>
                     <td
                       colSpan={6}
-                      className="py-8 text-center text-slate-400"
+                      className="py-8 text-center text-slate-500"
                     >
                       Nenhum pedido encontrado.
                     </td>
@@ -616,7 +683,7 @@ export default function AdminPage() {
                         key={enc.id}
                         className="border-b border-slate-800 last:border-0"
                       >
-                        <td className="py-3 pr-4 text-xs text-slate-300">
+                        <td className="py-3 pr-4 text-xs text-slate-400">
                           {new Date(enc.createdAt).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
@@ -629,7 +696,7 @@ export default function AdminPage() {
                           <div className="font-medium text-slate-50">
                             {enc.nome}
                           </div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-slate-500">
                             TXID {enc.txid}
                           </div>
                         </td>
@@ -649,7 +716,7 @@ export default function AdminPage() {
                         <td className="py-3 pr-4">
                           <StatusBadge status={enc.status} />
                         </td>
-                        <td className="py-3 pr-4 text-right font-medium text-yellow-300">
+                        <td className="py-3 pr-4 text-right font-medium text-sky-400">
                           {currency(valor)}
                         </td>
                         <td className="py-3 pl-4 text-right">
@@ -657,7 +724,7 @@ export default function AdminPage() {
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8 text-yellow-300 hover:bg-slate-800"
+                              className="h-8 w-8 text-sky-400 hover:bg-slate-800"
                               title="Ver detalhes"
                               onClick={() => setSelected(enc)}
                             >
@@ -714,9 +781,9 @@ export default function AdminPage() {
           open={!!selected}
           onOpenChange={(open) => !open && setSelected(null)}
         >
-          <DialogContent className="w-full max-w-lg max-h-[80vh] overflow-y-auto border-slate-700 bg-slate-900 text-slate-50">
+          <DialogContent className="w-full max-w-lg max-h-[80vh] overflow-y-auto border-slate-800 bg-slate-900 text-slate-50">
             <DialogHeader>
-              <DialogTitle className="text-yellow-300">
+              <DialogTitle className="text-slate-50">
                 Detalhes do pedido
               </DialogTitle>
             </DialogHeader>
@@ -780,12 +847,12 @@ export default function AdminPage() {
                 {/* Comprovante */}
                 {selected.comprovanteBase64 && (
                   <>
-                    <Separator className="bg-slate-700" />
+                    <Separator className="bg-slate-800" />
                     <div className="space-y-2">
                       <p className="text-sm font-semibold text-slate-50">
                         Comprovante de pagamento
                       </p>
-                      <div className="rounded-md border border-slate-700 bg-slate-950 p-2">
+                      <div className="rounded-md border border-slate-800 bg-slate-950 p-2">
                         <img
                           src={
                             selected.comprovanteBase64.startsWith("data:")

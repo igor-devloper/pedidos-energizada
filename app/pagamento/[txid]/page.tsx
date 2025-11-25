@@ -1,112 +1,91 @@
-// app/pagamento/[txid]/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { PixPayment } from "@/components/pix-payment";
 import { generatePixQRCode } from "@/lib/pix";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const UNIT_PRICE = 0.9;
-
-type EncomendaItem = {
-  id: string;
-  tipo: string;
-  quantidade: number;
-};
-
-type Encomenda = {
-  id: string;
-  txid: string;
-  nome: string;
-  telefone: string;
-  email: string;
-  observacoes: string | null;
-  status: string;
-  createdAt: string;
-  itens: EncomendaItem[];
-};
 
 export default function PagamentoPage() {
   const params = useParams<{ txid: string }>();
   const txid = params.txid;
 
-  const [encomenda, setEncomenda] = useState<Encomenda | null>(null);
+  const [pedido, setPedido] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payMode, setPayMode] = useState<"TOTAL" | "METADE">("TOTAL");
 
+  // 🎨 Paleta Energizada
+  const BG_1 = "from-blue-950";
+  const BG_2 = "via-blue-900";
+  const BG_3 = "to-blue-800";
+
+  // Carregar pedido
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/encomendas/${txid}`, {
+        const res = await fetch(`/api/pedidos/${txid}`, {
           cache: "no-store",
         });
-        if (!res.ok) {
-          throw new Error("Não foi possível carregar o pedido.");
-        }
-        const data = (await res.json()) as Encomenda;
-        setEncomenda(data);
+
+        if (!res.ok) throw new Error("Não foi possível carregar o pedido.");
+
+        const data = await res.json();
+        setPedido(data);
       } catch (e: any) {
         setError(e.message || "Erro ao carregar pedido.");
       } finally {
         setLoading(false);
       }
     };
+
     if (txid) load();
   }, [txid]);
 
   const valorTotalBase = useMemo(() => {
-    if (!encomenda) return 0;
-    const qtdTotal = (encomenda.itens || []).reduce(
-      (acc, i) => acc + i.quantidade,
-      0
-    );
-    return qtdTotal * UNIT_PRICE;
-  }, [encomenda]);
+    if (!pedido) return 0;
+    return pedido.valorTotal;
+  }, [pedido]);
 
-  const amount = useMemo(
-    () =>
-      payMode === "TOTAL" ? valorTotalBase : Number((valorTotalBase / 2).toFixed(2)),
-    [valorTotalBase, payMode]
-  );
+  const amount = useMemo(() => {
+    return payMode === "TOTAL"
+      ? valorTotalBase
+      : Number((valorTotalBase / 2).toFixed(2));
+  }, [valorTotalBase, payMode]);
 
-  const pixPayload = useMemo(
-    () =>
-      amount > 0
-        ? generatePixQRCode({
-            amount,
-          })
-        : "",
-    [amount]
-  );
+  const pixPayload = useMemo(() => {
+    return amount > 0 ? generatePixQRCode({ amount }) : "";
+  }, [amount]);
 
+  // LOADING SCREEN
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center px-4">
-        <Card className="border-pink-200 bg-white/95 px-8 py-6 shadow-md">
-          <CardContent className="flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin text-pink-600" />
-            <p className="text-sm text-slate-700">
-              Carregando informações do pagamento…
-            </p>
+      <main
+        className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
+      >
+        <Card className="bg-blue-900/40 border-blue-700 px-8 py-6 shadow-xl text-white">
+          <CardContent className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-yellow-400" />
+            <p>Carregando informações do pagamento…</p>
           </CardContent>
         </Card>
       </main>
     );
   }
 
-  if (error || !encomenda) {
+  // ERRO OU NÃO ENCONTRADO
+  if (error || !pedido) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-pink-50 to-white flex items-center justify-center px-4">
-        <Card className="border-red-200 bg-white/95 px-8 py-6 shadow-md">
+      <main
+        className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
+      >
+        <Card className="bg-red-900/30 border-red-400 px-8 py-6 shadow-xl text-white">
           <CardContent>
-            <p className="text-sm text-red-600">
-              {error || "Pedido não encontrado."}
-            </p>
+            <p>{error || "Pedido não encontrado."}</p>
           </CardContent>
         </Card>
       </main>
@@ -114,66 +93,71 @@ export default function PagamentoPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-pink-50 via-pink-50 to-white px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-4">
+    <main
+      className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} px-4 py-8`}
+    >
+      <div className="mx-auto max-w-4xl space-y-6 text-white">
         <div>
-          <h1 className="text-xl font-semibold text-pink-700">
-            Finalize o pagamento da sua encomenda
+          <h1 className="text-2xl font-extrabold text-yellow-400 drop-shadow">
+            Finalize o pagamento
           </h1>
-          <p className="text-sm text-pink-500">
+
+          <p className="text-blue-200">
             Pedido em nome de{" "}
-            <span className="font-semibold">{encomenda.nome}</span>.
+            <span className="text-yellow-400 font-bold">{pedido.nome}</span>.
           </p>
-          <p className="text-xs mt-1 text-slate-600">
+
+          <p className="text-sm text-blue-300 mt-1">
             Valor total da encomenda:{" "}
-            <span className="font-semibold">
+            <strong className="text-yellow-400">
               R$ {valorTotalBase.toFixed(2)}
-            </span>
+            </strong>
+          </p>
+
+          <p className="text-xs text-blue-300">
+            ⚡ Seu pedido será confirmado após envio do comprovante.
           </p>
         </div>
 
-        {/* Escolha: pagar metade ou total */}
-        <Card className="border-pink-200 bg-white/95 shadow-sm">
-          <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm font-medium text-slate-700">
-              Como você deseja pagar agora?
+        {/* Escolher tipo de pagamento */}
+        <Card className="bg-blue-900/40 border-blue-700 text-white shadow-lg">
+          <CardContent className="flex flex-col gap-3 py-5 md:flex-row md:items-center md:justify-between">
+            <p className="text-sm font-medium text-blue-200">
+              Como deseja pagar agora?
             </p>
+
             <div className="flex flex-wrap gap-2">
               <Button
-                type="button"
                 size="sm"
                 variant={payMode === "METADE" ? "default" : "outline"}
+                onClick={() => setPayMode("METADE")}
                 className={
                   payMode === "METADE"
-                    ? "bg-pink-600 text-white hover:bg-pink-700"
-                    : "border-pink-200 text-pink-700 hover:bg-pink-50"
+                    ? "bg-yellow-400 text-blue-900 hover:bg-yellow-500 font-bold"
+                    : "border-yellow-300 text-yellow-300 hover:bg-yellow-300/20"
                 }
-                onClick={() => setPayMode("METADE")}
               >
-                Pagar metade agora (R$ {(valorTotalBase / 2).toFixed(2)})
+                Metade (R$ {(valorTotalBase / 2).toFixed(2)})
               </Button>
+
               <Button
-                type="button"
                 size="sm"
                 variant={payMode === "TOTAL" ? "default" : "outline"}
+                onClick={() => setPayMode("TOTAL")}
                 className={
                   payMode === "TOTAL"
-                    ? "bg-pink-600 text-white hover:bg-pink-700"
-                    : "border-pink-200 text-pink-700 hover:bg-pink-50"
+                    ? "bg-yellow-400 text-blue-900 hover:bg-yellow-500 font-bold"
+                    : "border-yellow-300 text-yellow-300 hover:bg-yellow-300/20"
                 }
-                onClick={() => setPayMode("TOTAL")}
               >
-                Pagar total agora (R$ {valorTotalBase.toFixed(2)})
+                Total (R$ {valorTotalBase.toFixed(2)})
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <PixPayment
-          amount={amount}
-          orderId={encomenda.txid}
-          pixPayload={pixPayload}
-        />
+        {/* Pix Payment */}
+        <PixPayment amount={amount} orderId={pedido.txid} pixPayload={pixPayload} />
       </div>
     </main>
   );

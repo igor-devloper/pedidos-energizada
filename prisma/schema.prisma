@@ -4,48 +4,59 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
+model Pedido {
+  id       String @id @default(cuid())
+  nome     String
+  email    String
+  telefone String
 
+  modelo     Modelo
+  tamanho    Tamanho
+  tipoPedido TipoPedido
 
-model Encomenda {
-  id           String        @id @default(cuid())
-  txid         String        @unique
-  nome         String
-  email        String
-  telefone     String
-  observacoes  String?
+  valorTotal Float
+  valorPago  Float?
+  txid       String @unique
 
-  itens        EncomendaItem[]
+  // 🆕 Personalização de camisa
+  nomeCamisa   String
+  numeroCamisa String
 
-  totalItens   Int
-  valorTotal   Decimal       @db.Decimal(10, 2)
-  valorPago    Decimal?      @db.Decimal(10, 2) // quanto o cliente declarou pagar (metade ou total)
-
-  status       StatusEncomenda @default(AGUARDANDO_PAGAMENTO)
   comprovanteBase64 String?
+  status            Status  @default(AGUARDANDO_PAGAMENTO)
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-model EncomendaItem {
-  id          String     @id @default(cuid())
-  tipo        String
-  quantidade  Int
-
-  encomendaId String
-  encomenda   Encomenda  @relation(fields: [encomendaId], references: [id], onDelete: Cascade)
+enum Modelo {
+  BRANCA
+  AZUL
+  AZUL_SEM_MANGA
 }
 
-enum StatusEncomenda {
+enum Tamanho {
+  PP
+  P
+  M
+  G
+  GG
+  XG
+}
+
+enum TipoPedido {
+  KIT
+  BLUSA
+}
+
+enum Status {
   AGUARDANDO_PAGAMENTO
-  AGUARDANDO_VALIDACAO
-  PAGO_METADE      // meio pagamento confirmado
-  CONFIRMADO       // pagamento total confirmado
+  PAGO_METADE
+  PAGO
   CANCELADO
 }

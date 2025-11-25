@@ -1,29 +1,46 @@
-// app/final/page.tsx
+import Image from "next/image";
 import Link from "next/link";
 
 export default function FinalPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-pink-50 via-pink-50 to-white px-4 py-8">
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 text-center">
-        <div className="h-20 w-20 rounded-full bg-emerald-100 flex items-center justify-center mb-2">
-          <span className="text-3xl">🎉</span>
+    <main className="min-h-screen bg-gradient-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-12 flex items-center justify-center">
+      <div className="mx-auto flex max-w-xl flex-col items-center gap-6 text-center p-6 bg-blue-900/40 backdrop-blur-xl rounded-3xl border border-blue-700 shadow-2xl">
+
+        {/* LOGO GRANDE */}
+        <div className="relative w-60 h-28 md:w-80 md:h-36 drop-shadow-[0_0_18px_rgba(0,0,0,0.8)]">
+          <Image
+            src="/energizada-logo.png"
+            alt="Atlética Energizada"
+            fill
+            className="object-contain"
+            priority
+          />
         </div>
-        <h1 className="text-2xl font-bold text-pink-700">
-          Pedido recebido!
+
+        {/* TÍTULO */}
+        <h1 className="text-3xl font-extrabold text-yellow-300 drop-shadow">
+          Pedido Confirmado! ⚡
         </h1>
-        <p className="text-sm text-slate-600">
-          Seu pagamento e comprovante foram enviados com sucesso.
-          Assim que a Vizinha Salgateria confirmar tudo, você receberá a confirmação
-          da sua encomenda pelo email informado.
+
+        {/* TEXTO */}
+        <p className="text-sm md:text-base text-blue-100 leading-relaxed max-w-sm">
+          Seu pagamento foi enviado e estamos verificando tudo certinho.  
+          Assim que confirmarmos, você receberá um aviso pelo WhatsApp ou e-mail.
         </p>
-        <div className="mt-2 flex flex-col gap-2">
-          <Link
-            href="/"
-            className="inline-flex items-center justify-center rounded-full bg-pink-600 px-6 py-3 text-sm font-semibold text-white hover:bg-pink-700"
-          >
-            Fazer outra encomenda
-          </Link>
-        </div>
+
+        {/* BOTÃO */}
+        <Link
+          href="/"
+          className="
+            mt-2 inline-flex items-center justify-center 
+            rounded-full bg-yellow-400 px-8 py-3 
+            text-blue-900 font-bold text-sm md:text-base
+            hover:bg-yellow-500 transition
+            shadow-md
+          "
+        >
+          Fazer outro pedido
+        </Link>
       </div>
     </main>
   );

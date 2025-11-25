@@ -17,8 +17,8 @@ interface PixData {
  */
 export function generatePixQRCode({
   amount,
-  pixKey = "51801311000190",
-  merchantName = "IGOR WAGNER",
+  pixKey = "atleticaenergizada@cear.ufpb.br",
+  merchantName = "ANA CLARA",
   city = "BRASIL",
 }: PixData): string {
   const formattedAmount = Number(amount).toFixed(2);

@@ -162,7 +162,7 @@ function PedidosContent() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-8">
+    <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-8">
       <div className="mx-auto max-w-5xl space-y-6">
         {/* HEADER COM A LOGO */}
         <div className="rounded-3xl bg-blue-900/95 px-6 py-4 shadow-2xl border border-blue-800">
@@ -412,8 +412,8 @@ function PedidosContent() {
 
               {/* PREVIEW */}
               <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-yellow-400 via-yellow-300 to-blue-600 border border-yellow-500 shadow-xl">
-                  <div className="relative p-4 space-y-1 bg-gradient-to-t from-blue-900/90 via-blue-900/70 to-transparent">
+                <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-yellow-400 via-yellow-300 to-blue-600 border border-yellow-500 shadow-xl">
+                  <div className="relative p-4 space-y-1 bg-linear-to-t from-blue-900/90 via-blue-900/70 to-transparent">
                     <p className="text-xs font-semibold text-blue-900">
                       Preview do pedido
                     </p>

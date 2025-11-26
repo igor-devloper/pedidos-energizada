@@ -65,7 +65,7 @@ export default function PagamentoPage() {
   if (loading) {
     return (
       <main
-        className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
+        className={`min-h-screen bg-linear-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
       >
         <Card className="bg-blue-900/40 border-blue-700 px-8 py-6 shadow-xl text-white">
           <CardContent className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export default function PagamentoPage() {
   if (error || !pedido) {
     return (
       <main
-        className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
+        className={`min-h-screen bg-linear-to-b ${BG_1} ${BG_2} ${BG_3} flex items-center justify-center px-4`}
       >
         <Card className="bg-red-900/30 border-red-400 px-8 py-6 shadow-xl text-white">
           <CardContent>
@@ -94,7 +94,7 @@ export default function PagamentoPage() {
 
   return (
     <main
-      className={`min-h-screen bg-gradient-to-b ${BG_1} ${BG_2} ${BG_3} px-4 py-8`}
+      className={`min-h-screen bg-linear-to-b ${BG_1} ${BG_2} ${BG_3} px-4 py-8`}
     >
       <div className="mx-auto max-w-4xl space-y-6 text-white">
         <div>

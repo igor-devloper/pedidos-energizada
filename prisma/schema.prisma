@@ -34,6 +34,36 @@ model Pedido {
   updatedAt DateTime @updatedAt
 }
 
+
+model PedidoCaneca {
+  id       String @id @default(cuid())
+  nome     String
+  email    String
+  telefone String
+
+  tipoProduto TipoProdutoCaneca
+  quantidade  Int
+  observacao  String?
+
+  valorTotal Float
+  valorPago  Float?
+  txid       String @unique
+
+  comprovanteBase64 String?
+  status            Status  @default(AGUARDANDO_PAGAMENTO)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+enum TipoProdutoCaneca {
+  CANECA
+  TIRANTE
+  KIT_CANECA_TIRANTE
+}
+
+
 enum Modelo {
   BRANCA
   AZUL

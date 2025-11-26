@@ -8,7 +8,6 @@ import {
   Card,
   CardContent,
   CardHeader,
-  CardTitle,
   CardDescription,
 } from "@/components/ui/card";
 import { ShoppingBag, Shirt, Tag, Wine } from "lucide-react";
@@ -89,7 +88,7 @@ export default function ProdutosPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-10">
+    <main className="min-h-screen bg-liner-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         {/* LOGO + TÍTULO */}
         <header className="flex flex-col items-center gap-5 text-center">
@@ -133,11 +132,11 @@ export default function ProdutosPage() {
           </div>
         </div>
 
-        {/* MOBILE – CARROSSEL HORIZONTAL */}
-        <div className="md:hidden">
+        {/* MOBILE – CARROSSEL HORIZONTAL FULL WIDTH */}
+        <div className="md:hidden -mx-4">
           <div
             className="
-              flex gap-4 overflow-x-auto pb-4
+              flex gap-4 overflow-x-auto pb-6 px-4
               scrollbar-thin scrollbar-thumb-blue-900/60 scrollbar-track-transparent
             "
           >
@@ -174,7 +173,8 @@ function ProductCard({
           bg-blue-950/90
           border border-blue-900/80
           rounded-[22px]
-          shadow-[0_18px_40px_rgba(0,0,0,0.65)]
+          shadow-lg
+          md:shadow-[0_18px_40px_rgba(0,0,0,0.65)]
           transition-all duration-200
           group-hover:border-yellow-300
           group-hover:shadow-yellow-500/25
@@ -203,7 +203,7 @@ function ProductCard({
         </CardHeader>
 
         <CardContent className="px-4 pb-4">
-          <div className="relative mb-3 h-24 rounded-xl overflow-hidden bg-linear-to-br from-blue-900 via-blue-800 to-blue-900">
+          <div className="relative mb-3 h-24 rounded-xl overflow-hidden bg-liner-to-br from-blue-900 via-blue-800 to-blue-900">
             <Image
               src={produto.img}
               alt={produto.titulo}

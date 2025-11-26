@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-type Params = {
-  params: {
-    txid: string;
-  };
-};
+type Ctx = { params: Promise<{ txid: string }> }
 
-export async function GET(_req: Request, { params }: Params) {
-  const { txid } = params;
+export async function GET(_req: Request, { params }: Ctx) {
 
   try {
     const pedido = await prisma.pedidoCaneca.findUnique({
-      where: { txid },
+      where: { txid: (await params).txid },
     });
 
     if (!pedido) {

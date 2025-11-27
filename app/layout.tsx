@@ -4,6 +4,7 @@ import "./globals.css";
 import { Mulish } from "next/font/google";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
+import { CartProvider } from "@/components/cart-provider";
 
 const mulish = Mulish({
   subsets: ["latin"],
@@ -31,7 +32,7 @@ export default function RootLayout({
           [--font-sans:var(--font-mulish)]
         "
       >
-        <main className="flex-1">{children}</main>
+        <CartProvider>{children}</CartProvider>
         <Toaster richColors position="top-center" />
         <Analytics />
       </body>

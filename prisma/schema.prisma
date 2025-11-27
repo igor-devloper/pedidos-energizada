@@ -34,7 +34,6 @@ model Pedido {
   updatedAt DateTime @updatedAt
 }
 
-
 model PedidoCaneca {
   id       String @id @default(cuid())
   nome     String
@@ -56,13 +55,11 @@ model PedidoCaneca {
   updatedAt DateTime @updatedAt
 }
 
-
 enum TipoProdutoCaneca {
   CANECA
   TIRANTE
-  KIT_CANECA_TIRANTE
+  KIT
 }
-
 
 enum Modelo {
   BRANCA

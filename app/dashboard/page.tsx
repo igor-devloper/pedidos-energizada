@@ -52,7 +52,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-/** TIPOS DO PEDIDO (uniformes) */
+/** UNIFORMES **/
 type Modelo = "BRANCA" | "AZUL" | "AZUL_SEM_MANGA";
 type TipoPedido = "KIT" | "BLUSA";
 
@@ -72,6 +72,52 @@ type Encomenda = {
   valorPago?: string | number | null;
   comprovanteBase64?: string | null;
   createdAt: string;
+};
+
+/** CANECAS / TIRANTES **/
+type ProdutoCaneca = "CANECA" | "TIRANTE" | "KIT";
+
+type PedidoCaneca = {
+  id: string;
+  txid: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  produto: ProdutoCaneca;
+  quantidade: number;
+  status: string;
+  valorTotal: string | number;
+  valorPago?: string | number | null;
+  comprovanteBase64?: string | null;
+  createdAt: string;
+};
+
+/** TIPO UNIFICADO PRA TABELA / DETALHES **/
+type FontePedido = "UNIFORME" | "CANECA";
+
+type PedidoUnificado = {
+  id: string;
+  txid: string;
+  nome: string;
+  telefone: string;
+  email: string;
+  status: string;
+  valorTotal: string | number;
+  valorPago?: string | number | null;
+  comprovanteBase64?: string | null;
+  createdAt: string;
+  fonte: FontePedido;
+
+  // campos de uniforme
+  modelo?: Modelo;
+  tamanho?: string;
+  tipoPedidoUniforme?: TipoPedido;
+  nomeCamisa?: string;
+  numeroCamisa?: string;
+
+  // campos de caneca
+  produtoCaneca?: ProdutoCaneca;
+  quantidade?: number;
 };
 
 const currency = (n: number) =>
@@ -98,6 +144,7 @@ function StatusBadge({ status }: { status: string }) {
         </Badge>
       );
     case "CONFIRMADO":
+    case "PAGO":
       return (
         <Badge className="bg-emerald-500/90 hover:bg-emerald-500 text-white text-[10px]">
           Pago total
@@ -118,7 +165,8 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-const humanModelo = (m: Modelo) => {
+const humanModelo = (m?: Modelo) => {
+  if (!m) return "-";
   switch (m) {
     case "BRANCA":
       return "Camisa branca";
@@ -131,21 +179,52 @@ const humanModelo = (m: Modelo) => {
   }
 };
 
-const humanTipoPedido = (t: TipoPedido) =>
-  t === "KIT" ? "Kit (Camisa + Short)" : "Somente camisa";
+const humanTipoPedidoUniforme = (t?: TipoPedido) =>
+  t === "KIT"
+    ? "Kit uniforme (camisa + short)"
+    : t === "BLUSA"
+    ? "Somente camisa"
+    : "-";
 
-// ==== CONFIG DOS GRÁFICOS (shadcn) - tema amarelo Energizada ====
-const tipoChartConfig = {
-  kit: {
-    label: "Kit",
-    color: "#FACC15", // amarelo principal
+const humanProdutoCaneca = (p?: ProdutoCaneca) => {
+  switch (p) {
+    case "CANECA":
+      return "Caneca 850 mL";
+    case "TIRANTE":
+      return "Tirante";
+    case "KIT":
+      return "Kit caneca + tirante";
+    default:
+      return "-";
+  }
+};
+
+// ==== CONFIG DOS GRÁFICOS ====
+// Pizza: 5 tipos de produto
+const produtoChartConfig = {
+  kitUniforme: {
+    label: "Kit uniforme",
+    color: "#FACC15",
   },
-  blusa: {
-    label: "Blusa",
-    color: "#FBBF24", // amarelo secundário
+  camisa: {
+    label: "Camisa",
+    color: "#F97316",
+  },
+  caneca: {
+    label: "Caneca",
+    color: "#22C55E",
+  },
+  tirante: {
+    label: "Tirante",
+    color: "#0EA5E9",
+  },
+  kitCaneca: {
+    label: "Kit caneca",
+    color: "#A855F7",
   },
 } satisfies ChartConfig;
 
+// Barras: modelo da camisa
 const modeloChartConfig = {
   pedidos: {
     label: "Pedidos",
@@ -155,6 +234,7 @@ const modeloChartConfig = {
 
 export default function AdminPage() {
   const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
+  const [pedidosCaneca, setPedidosCaneca] = useState<PedidoCaneca[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -163,19 +243,32 @@ export default function AdminPage() {
     | "AGUARDANDO_VALIDACAO"
     | "PAGO_METADE"
     | "CONFIRMADO"
+    | "PAGO"
     | "CANCELADO"
   >("TODAS");
 
-  const [selected, setSelected] = useState<Encomenda | null>(null);
+  const [selected, setSelected] = useState<PedidoUnificado | null>(null);
   const [acting, setActing] = useState<string | null>(null);
 
   const fetchEncomendas = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/pedidos", { cache: "no-store" });
-      if (!res.ok) throw new Error();
-      const data = (await res.json()) as Encomenda[];
-      setEncomendas(data);
+      const [resUniformes, resCanecas] = await Promise.all([
+        fetch("/api/pedidos", { cache: "no-store" }),
+        fetch("/api/pedidos-canecas", { cache: "no-store" }),
+      ]);
+
+      if (!resUniformes.ok) throw new Error("Erro ao carregar uniformes");
+
+      const uniformes = (await resUniformes.json()) as Encomenda[];
+      setEncomendas(uniformes);
+
+      if (resCanecas.ok) {
+        const canecas = (await resCanecas.json()) as PedidoCaneca[];
+        setPedidosCaneca(canecas);
+      } else {
+        setPedidosCaneca([]);
+      }
     } catch (e) {
       console.error(e);
       toast.error("Não foi possível carregar os pedidos");
@@ -188,39 +281,89 @@ export default function AdminPage() {
     fetchEncomendas();
   }, []);
 
+  /** une uniformes + canecas em uma lista única para tabela/filtros */
+  const pedidosUnificados: PedidoUnificado[] = useMemo(() => {
+    const uni: PedidoUnificado[] = [];
+
+    for (const e of encomendas) {
+      uni.push({
+        id: e.id,
+        txid: e.txid,
+        nome: e.nome,
+        telefone: e.telefone,
+        email: e.email,
+        status: e.status,
+        valorTotal: e.valorTotal,
+        valorPago: e.valorPago,
+        comprovanteBase64: e.comprovanteBase64 ?? null,
+        createdAt: e.createdAt,
+        fonte: "UNIFORME",
+        modelo: e.modelo,
+        tamanho: e.tamanho,
+        tipoPedidoUniforme: e.tipoPedido,
+        nomeCamisa: e.nomeCamisa,
+        numeroCamisa: e.numeroCamisa,
+      });
+    }
+
+    for (const c of pedidosCaneca) {
+      uni.push({
+        id: c.id,
+        txid: c.txid,
+        nome: c.nome,
+        telefone: c.telefone,
+        email: c.email,
+        status: c.status,
+        valorTotal: c.valorTotal,
+        valorPago: c.valorPago,
+        comprovanteBase64: c.comprovanteBase64 ?? null,
+        createdAt: c.createdAt,
+        fonte: "CANECA",
+        produtoCaneca: c.produto,
+        quantidade: c.quantidade,
+      });
+    }
+
+    // ordena do mais recente pro mais antigo
+    return uni.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [encomendas, pedidosCaneca]);
+
   const filtradas = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return encomendas
-      .filter((e) =>
-        statusFilter === "TODAS" ? true : e.status === statusFilter
+    return pedidosUnificados
+      .filter((p) =>
+        statusFilter === "TODAS" ? true : p.status === statusFilter
       )
-      .filter((e) => {
+      .filter((p) => {
         if (!q) return true;
         return (
-          e.nome.toLowerCase().includes(q) ||
-          e.telefone.toLowerCase().includes(q) ||
-          e.email.toLowerCase().includes(q)
+          p.nome.toLowerCase().includes(q) ||
+          p.telefone.toLowerCase().includes(q) ||
+          p.email.toLowerCase().includes(q)
         );
       });
-  }, [encomendas, search, statusFilter]);
+  }, [pedidosUnificados, search, statusFilter]);
 
-  // ===== MÉTRICAS PARA UNIFORMES =====
+  // ===== MÉTRICAS GERAIS (uniformes + canecas) =====
   const {
     totalPedidos,
     totalConfirmados,
-    totalKits,
+    totalKitsUniforme,
     totalBlusas,
     totalValorEncomendas,
     totalRecebido,
     receitaAReceber,
     modeloCounts,
-    tipoCounts,
+    produtoCounts,
   } = useMemo(() => {
     const stats = {
-      totalPedidos: encomendas.length,
+      totalPedidos: 0,
       totalConfirmados: 0,
-      totalKits: 0,
+      totalKitsUniforme: 0,
       totalBlusas: 0,
       totalValorEncomendas: 0,
       totalRecebido: 0,
@@ -230,13 +373,19 @@ export default function AdminPage() {
         AZUL: 0,
         AZUL_SEM_MANGA: 0,
       } as Record<Modelo, number>,
-      tipoCounts: {
-        KIT: 0,
-        BLUSA: 0,
-      } as Record<TipoPedido, number>,
+      produtoCounts: {
+        kitUniforme: 0,
+        camisa: 0,
+        caneca: 0,
+        tirante: 0,
+        kitCaneca: 0,
+      },
     };
 
+    // UNIFORMES
     for (const e of encomendas) {
+      stats.totalPedidos += 1;
+
       const valorTotal =
         typeof e.valorTotal === "string"
           ? parseFloat(e.valorTotal)
@@ -250,20 +399,75 @@ export default function AdminPage() {
           : null;
 
       stats.totalValorEncomendas += valorTotal;
-      stats.tipoCounts[e.tipoPedido] += 1;
       stats.modeloCounts[e.modelo] += 1;
 
-      if (e.tipoPedido === "KIT") stats.totalKits += 1;
-      if (e.tipoPedido === "BLUSA") stats.totalBlusas += 1;
+      if (e.tipoPedido === "KIT") {
+        stats.totalKitsUniforme += 1;
+        stats.produtoCounts.kitUniforme += 1;
+      }
+      if (e.tipoPedido === "BLUSA") {
+        stats.totalBlusas += 1;
+        stats.produtoCounts.camisa += 1;
+      }
 
       const isConfirmado =
-        e.status === "PAGO_METADE" || e.status === "CONFIRMADO";
+        e.status === "PAGO_METADE" ||
+        e.status === "CONFIRMADO" ||
+        e.status === "PAGO";
 
       if (isConfirmado) {
         stats.totalConfirmados += 1;
-        let recebido = 0;
 
+        let recebido = 0;
         if (e.status === "PAGO_METADE") {
+          recebido =
+            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
+              ? valorPagoRaw
+              : valorTotal / 2;
+        } else {
+          recebido =
+            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
+              ? valorPagoRaw
+              : valorTotal;
+        }
+
+        stats.totalRecebido += recebido;
+      }
+    }
+
+    // CANECAS / TIRANTES
+    for (const c of pedidosCaneca) {
+      stats.totalPedidos += 1;
+
+      const valorTotal =
+        typeof c.valorTotal === "string"
+          ? parseFloat(c.valorTotal)
+          : Number(c.valorTotal || 0);
+
+      const valorPagoRaw =
+        c.valorPago != null
+          ? typeof c.valorPago === "string"
+            ? parseFloat(c.valorPago)
+            : Number(c.valorPago)
+          : null;
+
+      stats.totalValorEncomendas += valorTotal;
+
+      const qtd = c.quantidade || 1;
+      if (c.produto === "CANECA") stats.produtoCounts.caneca += qtd;
+      if (c.produto === "TIRANTE") stats.produtoCounts.tirante += qtd;
+      if (c.produto === "KIT") stats.produtoCounts.kitCaneca += qtd;
+
+      const isConfirmado =
+        c.status === "PAGO_METADE" ||
+        c.status === "CONFIRMADO" ||
+        c.status === "PAGO";
+
+      if (isConfirmado) {
+        stats.totalConfirmados += 1;
+
+        let recebido = 0;
+        if (c.status === "PAGO_METADE") {
           recebido =
             valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
               ? valorPagoRaw
@@ -285,50 +489,88 @@ export default function AdminPage() {
         : 0;
 
     return stats;
-  }, [encomendas]);
+  }, [encomendas, pedidosCaneca]);
 
-  // DADOS PARA GRÁFICOS (padrão shadcn + amarelo)
-  const pieTipoData = useMemo(
+  // DADOS PARA GRÁFICOS
+  const pieProdutoData = useMemo(
     () => [
       {
-        key: "kit",
-        tipo: "Kit",
-        value: tipoCounts.KIT,
+        key: "kitUniforme",
+        label: "Kit uniforme",
+        value: produtoCounts.kitUniforme,
       },
       {
-        key: "blusa",
-        tipo: "Blusa",
-        value: tipoCounts.BLUSA,
+        key: "camisa",
+        label: "Camisa",
+        value: produtoCounts.camisa,
+      },
+      {
+        key: "caneca",
+        label: "Caneca",
+        value: produtoCounts.caneca,
+      },
+      {
+        key: "tirante",
+        label: "Tirante",
+        value: produtoCounts.tirante,
+      },
+      {
+        key: "kitCaneca",
+        label: "Kit caneca",
+        value: produtoCounts.kitCaneca,
       },
     ],
-    [tipoCounts]
+    [produtoCounts]
   );
 
   const barModeloData = useMemo(
     () => [
-      { modelo: "Branca", pedidos: modeloCounts.BRANCA },
-      { modelo: "Azul", pedidos: modeloCounts.AZUL },
-      { modelo: "Azul s/ manga", pedidos: modeloCounts.AZUL_SEM_MANGA },
+      {
+        key: "azulSemManga",
+        modeloLabel: "Azul s/ manga",
+        pedidos: modeloCounts.AZUL_SEM_MANGA,
+        fill: "#22C55E",
+      },
+      {
+        key: "azul",
+        modeloLabel: "Azul",
+        pedidos: modeloCounts.AZUL,
+        fill: "#3B82F6",
+      },
+      {
+        key: "branca",
+        modeloLabel: "Branca",
+        pedidos: modeloCounts.BRANCA,
+        fill: "#F97316",
+      },
     ],
     [modeloCounts]
   );
 
-  const confirmarEncomenda = async (
-    enc: Encomenda,
+  const confirmarPedido = async (
+    ped: PedidoUnificado,
     tipo: "METADE" | "TOTAL"
   ) => {
     try {
-      setActing(enc.txid);
-      const res = await fetch("/api/pedidos/admin/confirmar", {
+      setActing(ped.txid);
+
+      const url =
+        ped.fonte === "UNIFORME"
+          ? "/api/pedidos/admin/confirmar"
+          : "/api/pedidos-canecas/admin/confirmar";
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          txid: enc.txid,
+          txid: ped.txid,
           aprovado: true,
           tipo,
         }),
       });
+
       if (!res.ok) throw new Error();
+
       toast.success(
         tipo === "METADE"
           ? "Pedido confirmado (pago metade)."
@@ -342,18 +584,25 @@ export default function AdminPage() {
     }
   };
 
-  const cancelarEncomenda = async (enc: Encomenda) => {
+  const cancelarPedido = async (ped: PedidoUnificado) => {
     try {
-      setActing(enc.txid);
-      const res = await fetch("/api/pedidos/admin/confirmar", {
+      setActing(ped.txid);
+
+      const url =
+        ped.fonte === "UNIFORME"
+          ? "/api/pedidos/admin/confirmar"
+          : "/api/pedidos-canecas/admin/confirmar";
+
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          txid: enc.txid,
+          txid: ped.txid,
           aprovado: false,
           motivo: "Pagamento divergente.",
         }),
       });
+
       if (!res.ok) throw new Error();
       toast.success("Pedido cancelado.");
       fetchEncomendas();
@@ -364,6 +613,13 @@ export default function AdminPage() {
     }
   };
 
+  const getProdutoLabel = (p: PedidoUnificado) => {
+    if (p.fonte === "UNIFORME") {
+      return p.tipoPedidoUniforme === "KIT" ? "Kit uniforme" : "Camisa";
+    }
+    return humanProdutoCaneca(p.produtoCaneca);
+  };
+
   return (
     <main className="min-h-screen bg-[#020817] px-4 py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -371,10 +627,10 @@ export default function AdminPage() {
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-50">
-              Painel de Pedidos — Uniformes Energizada
+              Painel de Pedidos — Energizada
             </h1>
             <p className="text-sm text-slate-400">
-              Acompanhe pedidos, pagamentos e distribuição de kits e camisas.
+              Acompanhe pedidos de uniformes e produtos (canecas e tirantes).
             </p>
           </div>
 
@@ -394,7 +650,7 @@ export default function AdminPage() {
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
                 <Shirt className="h-4 w-4 text-yellow-400" />
-                Total de pedidos
+                Total de pedidos (todos)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -402,7 +658,7 @@ export default function AdminPage() {
                 {totalPedidos}
               </p>
               <p className="text-[11px] text-slate-400">
-                {totalConfirmados} já com pagamento registrado
+                {totalConfirmados} com pagamento registrado
               </p>
             </CardContent>
           </Card>
@@ -411,22 +667,22 @@ export default function AdminPage() {
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
                 <PieChartIcon className="h-4 w-4 text-yellow-400" />
-                Kits x Blusas
+                Kits x Camisas (uniforme)
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-100">
                 <span className="font-semibold text-yellow-400">
-                  {totalKits}
+                  {totalKitsUniforme}
                 </span>{" "}
                 kits •{" "}
                 <span className="font-semibold text-yellow-400">
                   {totalBlusas}
                 </span>{" "}
-                blusas
+                camisas
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Distribuição geral dos pedidos
+                Considera apenas pedidos de uniforme
               </p>
             </CardContent>
           </Card>
@@ -443,7 +699,7 @@ export default function AdminPage() {
                 {currency(totalValorEncomendas)}
               </p>
               <p className="text-[11px] text-slate-400">
-                Soma de todos os pedidos cadastrados
+                Soma de todos os pedidos (uniforme + canecas)
               </p>
             </CardContent>
           </Card>
@@ -474,12 +730,12 @@ export default function AdminPage() {
 
         {/* GRÁFICOS */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Donut Kit x Blusa */}
+          {/* Pizza por tipo de produto */}
           <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
                 <PieChartIcon className="h-4 w-4 text-yellow-400" />
-                Distribuição de pedidos (Kit x Blusa)
+                Distribuição por tipo de produto
               </CardTitle>
             </CardHeader>
 
@@ -490,8 +746,8 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <ChartContainer
-                  config={tipoChartConfig}
-                  className="mx-auto h-64 w-full max-w-[320px]"
+                  config={produtoChartConfig}
+                  className="mx-auto h-64 w-full max-w-[360px]"
                 >
                   <PieChart>
                     <ChartTooltip
@@ -504,15 +760,15 @@ export default function AdminPage() {
                       }
                     />
                     <Pie
-                      data={pieTipoData}
+                      data={pieProdutoData}
                       dataKey="value"
-                      nameKey="tipo"
+                      nameKey="label"
                       innerRadius={70}
                       outerRadius={100}
                       paddingAngle={4}
                       strokeWidth={4}
                     >
-                      {pieTipoData.map((entry) => (
+                      {pieProdutoData.map((entry) => (
                         <Cell
                           key={entry.key}
                           fill={`var(--color-${entry.key})`}
@@ -528,7 +784,7 @@ export default function AdminPage() {
                           )
                             return null;
 
-                          const total = pieTipoData.reduce(
+                          const total = pieProdutoData.reduce(
                             (acc, cur) => acc + cur.value,
                             0
                           );
@@ -565,7 +821,7 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          {/* Bar por modelo */}
+          {/* Bar por modelo de camisa */}
           <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
@@ -575,7 +831,7 @@ export default function AdminPage() {
             </CardHeader>
 
             <CardContent className="pb-6 pt-0">
-              {totalPedidos === 0 ? (
+              {encomendas.length === 0 ? (
                 <div className="flex h-64 items-center justify-center text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
@@ -590,7 +846,7 @@ export default function AdminPage() {
                   >
                     <CartesianGrid vertical={false} stroke="#111827" />
                     <XAxis
-                      dataKey="modelo"
+                      dataKey="modeloLabel"
                       tickLine={false}
                       axisLine={false}
                       tickMargin={10}
@@ -615,11 +871,10 @@ export default function AdminPage() {
                       }
                     />
 
-                    <Bar
-                      dataKey="pedidos"
-                      radius={8}
-                      fill="var(--color-pedidos)"
-                    >
+                    <Bar dataKey="pedidos" radius={8}>
+                      {barModeloData.map((entry) => (
+                        <Cell key={entry.key} fill={entry.fill} />
+                      ))}
                       <LabelList
                         dataKey="pedidos"
                         position="top"
@@ -653,6 +908,7 @@ export default function AdminPage() {
                 { id: "AGUARDANDO_VALIDACAO", label: "Aguard. val." },
                 { id: "PAGO_METADE", label: "Pago metade" },
                 { id: "CONFIRMADO", label: "Pago total" },
+                { id: "PAGO", label: "Pago total (antigo)" },
                 { id: "CANCELADO", label: "Cancelado" },
               ].map((opt) => (
                 <Button
@@ -676,10 +932,12 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* TABELA */}
+        {/* TABELA – TODOS OS PEDIDOS */}
         <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
           <CardHeader>
-            <CardTitle className="text-slate-50">Pedidos</CardTitle>
+            <CardTitle className="text-slate-50">
+              Pedidos (uniformes e canecas)
+            </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -687,7 +945,7 @@ export default function AdminPage() {
                 <tr>
                   <th className="py-2 pr-4 text-left">Data</th>
                   <th className="py-2 pr-4 text-left">Cliente</th>
-                  <th className="py-2 pr-4 text-left">Uniforme</th>
+                  <th className="py-2 pr-4 text-left">Produto / Detalhes</th>
                   <th className="py-2 pr-4 text-left">Status</th>
                   <th className="py-2 pr-4 text-right">Valor</th>
                   <th className="py-2 pr-4 text-right">Ações</th>
@@ -713,19 +971,21 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtradas.map((enc) => {
+                  filtradas.map((ped) => {
                     const valor =
-                      typeof enc.valorTotal === "string"
-                        ? parseFloat(enc.valorTotal)
-                        : Number(enc.valorTotal || 0);
+                      typeof ped.valorTotal === "string"
+                        ? parseFloat(ped.valorTotal)
+                        : Number(ped.valorTotal || 0);
+
+                    const isUniforme = ped.fonte === "UNIFORME";
 
                     return (
                       <tr
-                        key={enc.id}
+                        key={ped.id}
                         className="border-b border-slate-800 last:border-0"
                       >
                         <td className="py-3 pr-4 text-xs text-slate-400">
-                          {new Date(enc.createdAt).toLocaleString("pt-BR", {
+                          {new Date(ped.createdAt).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                             year: "2-digit",
@@ -733,33 +993,60 @@ export default function AdminPage() {
                             minute: "2-digit",
                           })}
                         </td>
+
                         <td className="py-3 pr-4">
                           <div className="font-medium text-slate-50">
-                            {enc.nome}
+                            {ped.nome}
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            TXID {enc.txid}
+                            TXID {ped.txid}
                           </div>
                         </td>
+
                         <td className="py-3 pr-4 text-xs text-slate-100">
-                          <div>{humanModelo(enc.modelo)}</div>
-                          <div>{humanTipoPedido(enc.tipoPedido)}</div>
-                          <div>
-                            Tam:{" "}
-                            <span className="font-semibold">
-                              {enc.tamanho}
-                            </span>
+                          <div className="font-semibold">
+                            {getProdutoLabel(ped)}
                           </div>
-                          <div>
-                            {enc.nomeCamisa} • #{enc.numeroCamisa}
-                          </div>
+
+                          {isUniforme ? (
+                            <>
+                              <div>{humanModelo(ped.modelo)}</div>
+                              <div>
+                                {humanTipoPedidoUniforme(
+                                  ped.tipoPedidoUniforme
+                                )}
+                              </div>
+                              <div>
+                                Tam:{" "}
+                                <span className="font-semibold">
+                                  {ped.tamanho}
+                                </span>
+                              </div>
+                              <div>
+                                {ped.nomeCamisa} • #{ped.numeroCamisa}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div>{humanProdutoCaneca(ped.produtoCaneca)}</div>
+                              <div>
+                                Qtde:{" "}
+                                <span className="font-semibold">
+                                  {ped.quantidade ?? 1}
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </td>
+
                         <td className="py-3 pr-4">
-                          <StatusBadge status={enc.status} />
+                          <StatusBadge status={ped.status} />
                         </td>
+
                         <td className="py-3 pr-4 text-right font-medium text-sky-400">
                           {currency(valor)}
                         </td>
+
                         <td className="py-3 pl-4 text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -767,21 +1054,21 @@ export default function AdminPage() {
                               variant="ghost"
                               className="h-8 w-8 text-sky-400 hover:bg-slate-800"
                               title="Ver detalhes"
-                              onClick={() => setSelected(enc)}
+                              onClick={() => setSelected(ped)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
 
-                            {(enc.status === "AGUARDANDO_VALIDACAO" ||
-                              enc.status === "PAGO_METADE" ||
-                              enc.status === "AGUARDANDO_PAGAMENTO") && (
+                            {(ped.status === "AGUARDANDO_VALIDACAO" ||
+                              ped.status === "PAGO_METADE" ||
+                              ped.status === "AGUARDANDO_PAGAMENTO") && (
                               <>
                                 <Button
                                   size="icon-sm"
                                   className="bg-violet-500 hover:bg-violet-600 text-white"
-                                  disabled={acting === enc.txid}
+                                  disabled={acting === ped.txid}
                                   onClick={() =>
-                                    confirmarEncomenda(enc, "METADE")
+                                    confirmarPedido(ped, "METADE")
                                   }
                                 >
                                   1/2
@@ -789,9 +1076,9 @@ export default function AdminPage() {
                                 <Button
                                   size="icon-sm"
                                   className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                                  disabled={acting === enc.txid}
+                                  disabled={acting === ped.txid}
                                   onClick={() =>
-                                    confirmarEncomenda(enc, "TOTAL")
+                                    confirmarPedido(ped, "TOTAL")
                                   }
                                 >
                                   <CheckCircle2 className="h-4 w-4" />
@@ -799,8 +1086,8 @@ export default function AdminPage() {
                                 <Button
                                   size="icon-sm"
                                   variant="destructive"
-                                  disabled={acting === enc.txid}
-                                  onClick={() => cancelarEncomenda(enc)}
+                                  disabled={acting === ped.txid}
+                                  onClick={() => cancelarPedido(ped)}
                                 >
                                   <BanknoteX className="h-4 w-4" />
                                 </Button>
@@ -846,25 +1133,57 @@ export default function AdminPage() {
                     {selected.email}
                   </p>
                   <p>
-                    <span className="font-semibold">Modelo:</span>{" "}
-                    {humanModelo(selected.modelo)}
+                    <span className="font-semibold">Origem:</span>{" "}
+                    {selected.fonte === "UNIFORME"
+                      ? "Uniforme"
+                      : "Caneca / Tirante"}
                   </p>
                   <p>
-                    <span className="font-semibold">Tipo do pedido:</span>{" "}
-                    {humanTipoPedido(selected.tipoPedido)}
+                    <span className="font-semibold">Produto:</span>{" "}
+                    {getProdutoLabel(selected)}
                   </p>
+
+                  {selected.fonte === "UNIFORME" ? (
+                    <>
+                      <p>
+                        <span className="font-semibold">Modelo:</span>{" "}
+                        {humanModelo(selected.modelo)}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Tipo:</span>{" "}
+                        {humanTipoPedidoUniforme(
+                          selected.tipoPedidoUniforme
+                        )}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Tamanho:</span>{" "}
+                        {selected.tamanho}
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          Nome / número na camisa:
+                        </span>{" "}
+                        {selected.nomeCamisa} — #{selected.numeroCamisa}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p>
+                        <span className="font-semibold">Produto:</span>{" "}
+                        {humanProdutoCaneca(selected.produtoCaneca)}
+                      </p>
+                      <p>
+                        <span className="font-semibold">Quantidade:</span>{" "}
+                        {selected.quantidade ?? 1}
+                      </p>
+                    </>
+                  )}
+
                   <p>
-                    <span className="font-semibold">Tamanho:</span>{" "}
-                    {selected.tamanho}
+                    <span className="font-semibold">Status:</span>{" "}
+                    {selected.status}
                   </p>
-                  <p>
-                    <span className="font-semibold">Nome na camisa:</span>{" "}
-                    {selected.nomeCamisa}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Número:</span>{" "}
-                    {selected.numeroCamisa}
-                  </p>
+
                   <p>
                     <span className="font-semibold">Valor total:</span>{" "}
                     {currency(
@@ -873,6 +1192,7 @@ export default function AdminPage() {
                         : Number(selected.valorTotal || 0)
                     )}
                   </p>
+
                   {selected.valorPago != null && (
                     <p>
                       <span className="font-semibold">Valor pago:</span>{" "}

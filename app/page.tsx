@@ -88,7 +88,7 @@ export default function ProdutosPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-liner-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-10">
+    <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-10">
       <div className="mx-auto flex max-w-6xl flex-col gap-10">
         {/* LOGO + TÍTULO */}
         <header className="flex flex-col items-center gap-5 text-center">
@@ -203,7 +203,7 @@ function ProductCard({
         </CardHeader>
 
         <CardContent className="px-4 pb-4">
-          <div className="relative mb-3 h-24 rounded-xl overflow-hidden bg-liner-to-br from-blue-900 via-blue-800 to-blue-900">
+          <div className="relative mb-3 h-24 rounded-xl overflow-hidden bg-linear-to-br from-blue-900 via-blue-800 to-blue-900">
             <Image
               src={produto.img}
               alt={produto.titulo}

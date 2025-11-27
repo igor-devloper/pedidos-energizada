@@ -24,27 +24,39 @@ export default function PagamentoPage() {
   const BG_3 = "to-blue-800";
 
   // Carregar pedido
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/pedidos/${txid}`, {
+useEffect(() => {
+  const load = async () => {
+    try {
+      setLoading(true);
+
+      // 1) tenta buscar pedido de uniformes
+      let res = await fetch(`/api/pedidos/${txid}`, {
+        cache: "no-store",
+      });
+
+      // 2) se não achou, tenta buscar pedido de canecas
+      if (!res.ok) {
+        res = await fetch(`/api/pedidos-canecas/${txid}`, {
           cache: "no-store",
         });
 
-        if (!res.ok) throw new Error("Não foi possível carregar o pedido.");
-
-        const data = await res.json();
-        setPedido(data);
-      } catch (e: any) {
-        setError(e.message || "Erro ao carregar pedido.");
-      } finally {
-        setLoading(false);
+        if (!res.ok) {
+          throw new Error("Pedido não encontrado.");
+        }
       }
-    };
 
-    if (txid) load();
-  }, [txid]);
+      const data = await res.json();
+      setPedido(data);
+    } catch (e: any) {
+      setError(e.message || "Erro ao carregar pedido.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (txid) load();
+}, [txid]);
+
 
   const valorTotalBase = useMemo(() => {
     if (!pedido) return 0;

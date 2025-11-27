@@ -191,7 +191,7 @@ export function PixPayment({ amount, orderId, pixPayload }: PixPaymentProps) {
   return (
     <div className="w-full max-w-2xl mx-auto">
       <Card
-        className="shadow-xl border-blue-900 bg-gradient-to-b from-blue-950 via-blue-900 to-blue-800 text-white"
+        className="shadow-xl border-blue-900 bg-linear-to-b from-blue-950 via-blue-900 to-blue-800 text-white"
         style={{ borderColor: COLOR_PRIMARY }}
       >
         <CardHeader className="text-center">

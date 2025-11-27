@@ -3,6 +3,9 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { Loader2, ShoppingCart, Trash2 } from "lucide-react";
+
 import { useCart } from "@/components/cart-provider";
 import {
   Card,
@@ -21,9 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+
 import type { CartItem, Modelo, Tamanho } from "@/lib/cart-types";
-import { toast } from "sonner";
-import { ShoppingCart, Trash2 } from "lucide-react";
+import {
+  calcularTotalComTaxas,
+  type MetodoPagamento,
+  type Parcelas,
+} from "@/lib/calc-tax";
 
 const modeloLabel = (m?: Modelo) =>
   m === "BRANCA"
@@ -43,13 +50,24 @@ export default function CarrinhoPage() {
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // novo: método de pagamento + parcelas
+  const [metodoPagamento, setMetodoPagamento] =
+    useState<MetodoPagamento>("pix");
+  const [parcelas, setParcelas] = useState<Parcelas>(1);
+
   const hasUniforme = useMemo(
     () => items.some((i) => i.kind === "UNIFORME"),
     [items]
   );
 
+  // 🔹 resumo de taxas em cima do subtotal (total do carrinho)
+  const resumoTaxas = useMemo(
+    () => calcularTotalComTaxas(total, metodoPagamento, parcelas),
+    [total, metodoPagamento, parcelas]
+  );
+
   const handleCheckout = async () => {
-    if (items.length === 0) {
+    if (!items.length) {
       toast.error("Seu carrinho está vazio.");
       return;
     }
@@ -61,7 +79,12 @@ export default function CarrinhoPage() {
     // valida uniforms preenchidos
     for (const item of items) {
       if (item.kind === "UNIFORME") {
-        if (!item.modelo || !item.tamanho || !item.nomeCamisa || !item.numeroCamisa) {
+        if (
+          !item.modelo ||
+          !item.tamanho ||
+          !item.nomeCamisa ||
+          !item.numeroCamisa
+        ) {
           toast.error(
             "Preencha modelo, tamanho, nome e número da camisa para todos os uniformes."
           );
@@ -72,6 +95,7 @@ export default function CarrinhoPage() {
 
     try {
       setLoading(true);
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,6 +104,8 @@ export default function CarrinhoPage() {
           email,
           telefone,
           items,
+          metodoPagamento,
+          parcelas,
         }),
       });
 
@@ -91,10 +117,12 @@ export default function CarrinhoPage() {
       const data = await res.json();
       const initPoint: string | undefined = data.initPoint;
 
-      if (!initPoint) throw new Error("URL de pagamento não encontrada.");
+      if (!initPoint) {
+        throw new Error("URL de pagamento não encontrada.");
+      }
 
       clearCart();
-      window.location.href = initPoint; // redireciona pro Mercado Pago
+      window.location.href = initPoint; // redireciona pro MP
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erro ao redirecionar para pagamento.");
@@ -157,7 +185,8 @@ export default function CarrinhoPage() {
                         </p>
                         {item.kind === "CANECA" && (
                           <p className="text-[11px] text-blue-300 mt-1">
-                            Tipo: {item.tipoProduto === "CANECA"
+                            Tipo:{" "}
+                            {item.tipoProduto === "CANECA"
                               ? "Caneca 850 mL"
                               : item.tipoProduto === "TIRANTE"
                               ? "Tirante"
@@ -214,16 +243,11 @@ export default function CarrinhoPage() {
                             <Select
                               value={item.modelo}
                               onValueChange={(v) =>
-                                updateItem(item.id, {
-                                  modelo: v as Modelo,
-                                })
+                                updateItem(item.id, { modelo: v as Modelo })
                               }
                             >
                               <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
-                                <SelectValue
-                                  placeholder="Selecione"
-                                  defaultValue={item.modelo}
-                                />
+                                <SelectValue placeholder="Selecione" />
                               </SelectTrigger>
                               <SelectContent className="bg-blue-900 border-blue-700 text-xs">
                                 <SelectItem value="BRANCA">
@@ -246,9 +270,7 @@ export default function CarrinhoPage() {
                             <Select
                               value={item.tamanho}
                               onValueChange={(v) =>
-                                updateItem(item.id, {
-                                  tamanho: v as Tamanho,
-                                })
+                                updateItem(item.id, { tamanho: v as Tamanho })
                               }
                             >
                               <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
@@ -314,6 +336,7 @@ export default function CarrinhoPage() {
 
           {/* DADOS + RESUMO */}
           <div className="space-y-4">
+            {/* Dados do comprador */}
             <Card className="border-blue-800 bg-blue-950/90 text-white shadow-2xl rounded-3xl">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm md:text-base text-yellow-300">
@@ -351,20 +374,83 @@ export default function CarrinhoPage() {
               </CardContent>
             </Card>
 
+            {/* Resumo + método + parcelas */}
             <Card className="border-blue-800 bg-blue-950/90 text-white shadow-2xl rounded-3xl">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm md:text-base text-yellow-300">
-                  Resumo
+                  Resumo do pagamento
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-4 space-y-3">
-                <div className="flex justify-between text-xs text-blue-100">
-                  <span>Itens</span>
-                  <span>{items.length}</span>
+              <CardContent className="pt-4 space-y-3 text-xs md:text-sm">
+                <div className="space-y-2">
+                  <Label className="text-[11px] text-blue-200">
+                    Método de pagamento
+                  </Label>
+                  <Select
+                    value={metodoPagamento}
+                    onValueChange={(v) =>
+                      setMetodoPagamento(v as MetodoPagamento)
+                    }
+                  >
+                    <SelectTrigger className="bg-blue-900/70 border-blue-700 text-xs ">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
+                      <SelectItem value="pix">Pix</SelectItem>
+                      <SelectItem value="credito">
+                        Cartão de crédito
+                      </SelectItem>
+                      <SelectItem value="boleto">Boleto</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {metodoPagamento === "credito" && (
+                    <div className="mt-2">
+                      <Label className="text-[11px] text-blue-200">
+                        Parcelamento
+                      </Label>
+                      <Select
+                        value={String(parcelas)}
+                        onValueChange={(v) =>
+                          setParcelas(Number(v) as Parcelas)
+                        }
+                      >
+                        <SelectTrigger className="bg-blue-900/70 border-blue-700 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
+                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((p) => (
+                            <SelectItem key={p} value={String(p)}>
+                              {p}x
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between text-sm text-yellow-300 font-semibold">
-                  <span>Total</span>
+
+                <Separator className="bg-blue-800 my-2" />
+
+                <div className="flex justify-between text-xs text-blue-100">
+                  <span>Subtotal (sem taxas)</span>
                   <span>R$ {total.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-blue-100">
+                  <span>
+                    Taxa de serviço{" "}
+                    <span className="text-[10px] text-blue-300">
+                      ({(resumoTaxas.taxaPercentual * 100).toFixed(2)}%)
+                    </span>
+                  </span>
+                  <span>R$ {resumoTaxas.taxaTotal.toFixed(2)}</span>
+                </div>
+
+                <div className="flex justify-between text-sm text-yellow-300 font-semibold">
+                  <span>Total com taxas</span>
+                  <span>
+                    R$ {resumoTaxas.totalConsumidor.toFixed(2)}
+                  </span>
                 </div>
 
                 <Button
@@ -372,7 +458,9 @@ export default function CarrinhoPage() {
                   disabled={items.length === 0 || loading}
                   onClick={handleCheckout}
                 >
-                  {loading ? "Conectando ao Mercado Pago..." : "Pagar com Mercado Pago"}
+                  {loading
+                    ? <Loader2 className="h-5 w-5 animate-spin" />
+                    : "Finalizar"}
                 </Button>
 
                 {hasUniforme && (

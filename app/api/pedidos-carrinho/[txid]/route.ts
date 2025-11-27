@@ -2,14 +2,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-type Params = {
-  params: { txid: string };
-};
-
-export async function GET(_req: Request, { params }: Params) {
+type Ctx = { params: Promise<{ txid: string }> }
+export async function GET(_req: Request, { params }: Ctx) {
   try {
     const pedido = await prisma.pedidoCarrinho.findUnique({
-      where: { txid: params.txid },
+      where: { txid: (await params).txid },
     });
 
     if (!pedido) {

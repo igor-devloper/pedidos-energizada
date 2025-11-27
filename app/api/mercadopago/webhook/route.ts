@@ -11,7 +11,6 @@ const mpClient = new MercadoPagoConfig({
 const paymentClient = new Payment(mpClient);
 
 export const runtime = "nodejs";
-
 export const dynamic = "force-dynamic";
 
 type StatusInterno = "AGUARDANDO_PAGAMENTO" | "PAGO" | "CANCELADO";

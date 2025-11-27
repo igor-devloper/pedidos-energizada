@@ -1,80 +1,129 @@
 // app/final/page.tsx
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
-export default function FinalPage() {
+type PedidoCarrinho = {
+  txid: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  valorTotal: number;
+  status: string;
+};
+
+function FinalContent() {
   const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const status = searchParams.get("status"); // success | failure | pending
+  const statusMP = searchParams.get("status");
   const txid = searchParams.get("txid");
 
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
+  const [pedido, setPedido] = useState<PedidoCarrinho | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status === "success") {
-      setTitulo("Pagamento aprovado ✅");
-      setDescricao(
-        "Seu pagamento foi aprovado pelo Mercado Pago. Em alguns instantes o status já estará atualizado no painel."
-      );
-    } else if (status === "pending") {
-      setTitulo("Pagamento pendente ⏳");
-      setDescricao(
-        "O Mercado Pago ainda está processando seu pagamento. Assim que for aprovado, atualizaremos o status do seu pedido automaticamente."
-      );
-    } else if (status === "failure") {
-      setTitulo("Pagamento não concluído ❌");
-      setDescricao(
-        "Seu pagamento não foi concluído ou foi recusado. Você pode tentar novamente."
-      );
-    } else {
-      setTitulo("Retorno de pagamento");
-      setDescricao("Não foi possível identificar o status do pagamento.");
-    }
-  }, [status]);
+    const load = async () => {
+      if (!txid) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/pedidos-carrinho/${txid}`, {
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        setPedido(data);
+      } catch (err) {
+        console.error(err);
+        setPedido(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [txid]);
+
+  if (!txid) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-50 px-4">
+        <p>TXID não informado.</p>
+      </main>
+    );
+  }
+
+  if (loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-50 px-4">
+        <div className="flex items-center gap-2 text-sm">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Carregando pedido…</span>
+        </div>
+      </main>
+    );
+  }
+
+  if (!pedido) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-50 px-4">
+        <p>Pedido não encontrado.</p>
+      </main>
+    );
+  }
+
+  const statusTxt =
+    statusMP === "success"
+      ? "Pagamento aprovado (aguarde a confirmação pela Atlética)."
+      : statusMP === "failure"
+      ? "Pagamento não aprovado. Você pode tentar novamente."
+      : "Pagamento em análise ou pendente.";
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-8 flex items-center justify-center">
-      <Card className="max-w-lg w-full border-blue-800 bg-blue-950/90 text-white shadow-2xl rounded-3xl">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-yellow-300">
-            {titulo}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <p className="text-blue-100">{descricao}</p>
-
-          {txid && (
-            <p className="text-xs text-blue-300">
-              Código do pedido: <span className="font-mono">{txid}</span>
+    <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-50">
+      <div className="max-w-xl mx-auto">
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader>
+            <CardTitle>Resumo do pedido</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>
+              <span className="font-semibold">Cliente:</span> {pedido.nome}
             </p>
-          )}
-
-          <div className="flex flex-wrap gap-2 mt-4">
-            {txid && (
-              <Button
-                className="bg-yellow-400 text-blue-900 hover:bg-yellow-500"
-                onClick={() => router.push(`/pagamento/${txid}`)}
-              >
-                Ver detalhes / Pix
-              </Button>
-            )}
-
-            <Button
-              variant="outline"
-              className="border-blue-700 text-blue-100 hover:bg-blue-900/60"
-              onClick={() => router.push("/")}
-            >
-              Voltar para a loja
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <p>
+              <span className="font-semibold">TXID:</span> {pedido.txid}
+            </p>
+            <p>
+              <span className="font-semibold">Valor total:</span>{" "}
+              {pedido.valorTotal.toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </p>
+            <p className="mt-4 text-yellow-300">{statusTxt}</p>
+          </CardContent>
+        </Card>
+      </div>
     </main>
+  );
+}
+
+export default function FinalPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen flex items-center justify-center bg-slate-950 text-slate-50 px-4">
+          <div className="flex items-center gap-2 text-sm">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Carregando…</span>
+          </div>
+        </main>
+      }
+    >
+      <FinalContent />
+    </Suspense>
   );
 }

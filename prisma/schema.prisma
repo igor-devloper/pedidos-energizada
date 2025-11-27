@@ -64,9 +64,12 @@ model PedidoCaneca {
   quantidade  Int
   observacao  String?
 
-  valorTotal Float
-  valorPago  Float?
-  txid       String @unique
+  subtotal    Float // valor só dos produtos
+  taxaServico Float // taxa para cobrir Mercado Pago
+  valorTotal  Float // subtotal + taxaServico
+  
+  valorPago   Float?
+  txid        String            @unique
 
   comprovanteBase64 String?
   status            Status  @default(AGUARDANDO_PAGAMENTO)

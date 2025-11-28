@@ -113,10 +113,7 @@ export default function CarrinhoPage() {
       telefone,
     });
 
-    if (!parsed.success) {
-      toast.error(parsed.error.message || "Revise os dados do formulário.");
-      return;
-    }
+    
 
     // valida uniformes
     for (const item of items) {

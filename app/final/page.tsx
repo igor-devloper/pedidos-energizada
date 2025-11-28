@@ -41,7 +41,7 @@ function FinalContent() {
     const load = async () => {
       try {
         setLoading(true);
-        const res = await fetch(`/api/pedido-carrinho/${txid}`, {
+        const res = await fetch(`/api/pedidos-carrinho/${txid}`, {
           cache: "no-store",
         });
 

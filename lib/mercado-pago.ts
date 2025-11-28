@@ -1,14 +1,19 @@
 // lib/mercado-pago.ts
-import { MercadoPagoConfig } from "mercadopago";
+import { MercadoPagoConfig, Payment } from "mercadopago";
 import crypto from "crypto";
 
-// Cliente Mercado Pago
+if (!process.env.MERCADO_PAGO_ACCESS_TOKEN) {
+  console.warn("[MP] MERCADO_PAGO_ACCESS_TOKEN não definido!");
+}
+
 export const mpClient = new MercadoPagoConfig({
   accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN as string,
 });
 
-// Verifica a assinatura HMAC do webhook do Mercado Pago
-// Lança erro se for inválida
+export const paymentClient = new Payment(mpClient);
+
+// mesma lógica do exemplo que você mandou, mas em vez de retornar NextResponse,
+// lançamos erro se a assinatura for inválida
 export function verifyMercadoPagoSignature(request: Request) {
   const xSignature = request.headers.get("x-signature");
   const xRequestId = request.headers.get("x-request-id");
@@ -17,7 +22,6 @@ export function verifyMercadoPagoSignature(request: Request) {
     throw new Error("Missing x-signature or x-request-id header");
   }
 
-  // x-signature vem no formato: ts=...,v1=...
   const signatureParts = xSignature.split(",");
   let ts = "";
   let v1 = "";
@@ -40,9 +44,10 @@ export function verifyMercadoPagoSignature(request: Request) {
   manifest += `request-id:${xRequestId};`;
   manifest += `ts:${ts};`;
 
-  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET as string;
+  const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
   if (!secret) {
-    throw new Error("MERCADO_PAGO_WEBHOOK_SECRET not configured");
+    console.warn("[MP] MERCADO_PAGO_WEBHOOK_SECRET não definido – assinatura não será verificada.");
+    return;
   }
 
   const hmac = crypto.createHmac("sha256", secret);

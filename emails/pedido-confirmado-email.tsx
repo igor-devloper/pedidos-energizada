@@ -65,9 +65,15 @@ export default function PedidoConfirmadoEnergizadaEmail(
             <Img
               src={logoSrc}
               alt="Atlética Energizada"
-              width="260"
-              height="80"
-              style={styles.logo}
+              width="160"
+              style={{
+                display: "block",
+                margin: "0 auto",
+                height: "auto",          // ← mantém proporção natural!
+                maxWidth: "160px",
+                borderRadius: "16px",
+                filter: "drop-shadow(0 0 12px #ffd50050)", // amarelo energizada opcional
+              }}
             />
           </Section>
 

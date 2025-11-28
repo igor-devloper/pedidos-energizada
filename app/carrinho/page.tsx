@@ -50,8 +50,6 @@ const compradorSchema = z.object({
     .trim()
     .min(3, "Informe seu nome completo."),
   email: z
-    .string()
-    .trim()
     .email("Informe um e-mail válido."),
   telefone: z
     .string()
@@ -113,7 +111,10 @@ export default function CarrinhoPage() {
       telefone,
     });
 
-    
+    if (!parsed.success) {
+      toast.error(parsed.error.message || "Revise os dados do formulário.");
+      return;
+    }
 
     // valida uniformes
     for (const item of items) {

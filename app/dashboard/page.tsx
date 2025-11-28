@@ -161,7 +161,7 @@ export default function AdminPage() {
   const fetchPedidos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/pedidos-carrinho", {
+      const res = await fetch("/api/pedidos-carrinho", {
         cache: "no-store",
       });
       if (!res.ok) throw new Error("Erro ao buscar pedidos");

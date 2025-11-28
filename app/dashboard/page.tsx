@@ -23,26 +23,24 @@ import {
   Eye,
   RefreshCw,
   Search,
-  CheckCircle2,
-  BanknoteX,
-  Wallet,
   Shirt,
+  Wallet,
   BarChart3,
   PieChart as PieChartIcon,
+  Package,
 } from "lucide-react";
 
-// recharts + shadcn charts
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Label,
-  LabelList,
-  Pie,
   PieChart,
+  Pie,
+  Cell,
+  Label,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
-  Cell,
+  CartesianGrid,
+  LabelList,
 } from "recharts";
 
 import {
@@ -52,74 +50,51 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 
-/** UNIFORMES **/
-type Modelo = "BRANCA" | "AZUL" | "AZUL_SEM_MANGA";
-type TipoPedido = "KIT" | "BLUSA";
+/** TIPOS BÁSICOS (somente para o admin) **/
 
-type Encomenda = {
-  id: string;
-  txid: string;
-  nome: string;
-  telefone: string;
-  email: string;
-  modelo: Modelo;
-  tamanho: string;
-  tipoPedido: TipoPedido;
-  nomeCamisa: string;
-  numeroCamisa: string;
-  status: string;
-  valorTotal: string | number;
-  valorPago?: string | number | null;
-  comprovanteBase64?: string | null;
-  createdAt: string;
-};
+type StatusInterno =
+  | "AGUARDANDO_PAGAMENTO"
+  | "PAGO_METADE"
+  | "PAGO"
+  | "CANCELADO";
 
-/** CANECAS / TIRANTES **/
-type ProdutoCaneca = "CANECA" | "TIRANTE" | "KIT";
+type TipoPedidoUniforme = "KIT" | "BLUSA";
+type TipoProdutoCaneca = "CANECA" | "TIRANTE" | "KIT";
 
-type PedidoCaneca = {
-  id: string;
-  txid: string;
-  nome: string;
-  telefone: string;
-  email: string;
-  produto: ProdutoCaneca;
-  quantidade: number;
-  status: string;
-  valorTotal: string | number;
-  valorPago?: string | number | null;
-  comprovanteBase64?: string | null;
-  createdAt: string;
-};
+// Estrutura genérica de item gravado em itemsJson
+type ItemCarrinho = {
+  kind: "UNIFORME" | "CANECA";
+  productId: string;
+  label: string;
+  unitPrice: number;
+  quantity: number;
 
-/** TIPO UNIFICADO PRA TABELA / DETALHES **/
-type FontePedido = "UNIFORME" | "CANECA";
-
-type PedidoUnificado = {
-  id: string;
-  txid: string;
-  nome: string;
-  telefone: string;
-  email: string;
-  status: string;
-  valorTotal: string | number;
-  valorPago?: string | number | null;
-  comprovanteBase64?: string | null;
-  createdAt: string;
-  fonte: FontePedido;
-
-  // campos de uniforme
-  modelo?: Modelo;
+  // uniformes
+  tipoPedido?: TipoPedidoUniforme;
+  modelo?: "BRANCA" | "AZUL" | "AZUL_SEM_MANGA";
   tamanho?: string;
-  tipoPedidoUniforme?: TipoPedido;
   nomeCamisa?: string;
   numeroCamisa?: string;
 
-  // campos de caneca
-  produtoCaneca?: ProdutoCaneca;
-  quantidade?: number;
+  // canecas/tirantes
+  tipoProduto?: TipoProdutoCaneca;
 };
 
+// Pedido vindo da API
+type PedidoCarrinho = {
+  id: string;
+  txid: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  status: StatusInterno | string;
+  valorTotal: number | string;
+  valorPago?: number | string | null;
+  itemsJson: ItemCarrinho[] | any;
+  createdAt: string;
+};
+
+// === helpers ===
 const currency = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -131,23 +106,16 @@ function StatusBadge({ status }: { status: string }) {
           Aguard. pagamento
         </Badge>
       );
-    case "AGUARDANDO_VALIDACAO":
-      return (
-        <Badge className="bg-sky-500/90 hover:bg-sky-500 text-white text-[10px]">
-          Aguard. validação
-        </Badge>
-      );
     case "PAGO_METADE":
       return (
         <Badge className="bg-violet-500/90 hover:bg-violet-500 text-white text-[10px]">
           Pago metade
         </Badge>
       );
-    case "CONFIRMADO":
     case "PAGO":
       return (
         <Badge className="bg-emerald-500/90 hover:bg-emerald-500 text-white text-[10px]">
-          Pago total
+          Pago (MP)
         </Badge>
       );
     case "CANCELADO":
@@ -165,460 +133,230 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-const humanModelo = (m?: Modelo) => {
-  if (!m) return "-";
-  switch (m) {
-    case "BRANCA":
-      return "Camisa branca";
-    case "AZUL":
-      return "Camisa azul";
-    case "AZUL_SEM_MANGA":
-      return "Camisa azul sem manga";
-    default:
-      return m;
-  }
-};
-
-const humanTipoPedidoUniforme = (t?: TipoPedido) =>
-  t === "KIT"
-    ? "Kit uniforme (camisa + short)"
-    : t === "BLUSA"
-    ? "Somente camisa"
-    : "-";
-
-const humanProdutoCaneca = (p?: ProdutoCaneca) => {
-  switch (p) {
-    case "CANECA":
-      return "Caneca 850 mL";
-    case "TIRANTE":
-      return "Tirante";
-    case "KIT":
-      return "Kit caneca + tirante";
-    default:
-      return "-";
-  }
-};
-
-// ==== CONFIG DOS GRÁFICOS ====
-// Pizza: 5 tipos de produto
-const produtoChartConfig = {
-  kitUniforme: {
-    label: "Kit uniforme",
-    color: "#FACC15",
-  },
-  camisa: {
-    label: "Camisa",
-    color: "#F97316",
-  },
-  caneca: {
-    label: "Caneca",
-    color: "#22C55E",
-  },
-  tirante: {
-    label: "Tirante",
-    color: "#0EA5E9",
-  },
-  kitCaneca: {
-    label: "Kit caneca",
-    color: "#A855F7",
-  },
+// gráficos
+const statusChartConfig = {
+  aguardando: { label: "Aguardando", color: "#FBBF24" },
+  pago: { label: "Pago", color: "#22C55E" },
+  metade: { label: "Pago metade", color: "#A855F7" },
+  cancelado: { label: "Cancelado", color: "#EF4444" },
 } satisfies ChartConfig;
 
-// Barras: modelo da camisa
-const modeloChartConfig = {
-  pedidos: {
-    label: "Pedidos",
-    color: "#FACC15",
-  },
+const produtoChartConfig = {
+  kitUniforme: { label: "Kit uniforme", color: "#FACC15" },
+  camisa: { label: "Camisa", color: "#F97316" },
+  caneca: { label: "Caneca", color: "#22C55E" },
+  tirante: { label: "Tirante", color: "#0EA5E9" },
+  kitCaneca: { label: "Kit caneca", color: "#A855F7" },
 } satisfies ChartConfig;
 
 export default function AdminPage() {
-  const [encomendas, setEncomendas] = useState<Encomenda[]>([]);
-  const [pedidosCaneca, setPedidosCaneca] = useState<PedidoCaneca[]>([]);
+  const [pedidos, setPedidos] = useState<PedidoCarrinho[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<
-    | "TODAS"
-    | "AGUARDANDO_PAGAMENTO"
-    | "AGUARDANDO_VALIDACAO"
-    | "PAGO_METADE"
-    | "CONFIRMADO"
-    | "PAGO"
-    | "CANCELADO"
-  >("TODAS");
+    "TODOS" | StatusInterno | "PAGO_METADE"
+  >("TODOS");
+  const [selected, setSelected] = useState<PedidoCarrinho | null>(null);
 
-  const [selected, setSelected] = useState<PedidoUnificado | null>(null);
-  const [acting, setActing] = useState<string | null>(null);
-
-  const fetchEncomendas = async () => {
+  const fetchPedidos = async () => {
     setLoading(true);
     try {
-      const [resUniformes, resCanecas] = await Promise.all([
-        fetch("/api/pedidos", { cache: "no-store" }),
-        fetch("/api/pedidos-canecas", { cache: "no-store" }),
-      ]);
+      const res = await fetch("/api/admin/pedidos-carrinho", {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Erro ao buscar pedidos");
+      const data = (await res.json()) as PedidoCarrinho[];
 
-      if (!resUniformes.ok) throw new Error("Erro ao carregar uniformes");
+      // garante array de items
+      const normalizados = data.map((p) => ({
+        ...p,
+        itemsJson: Array.isArray(p.itemsJson) ? p.itemsJson : [],
+      }));
 
-      const uniformes = (await resUniformes.json()) as Encomenda[];
-      setEncomendas(uniformes);
-
-      if (resCanecas.ok) {
-        const canecas = (await resCanecas.json()) as PedidoCaneca[];
-        setPedidosCaneca(canecas);
-      } else {
-        setPedidosCaneca([]);
-      }
-    } catch (e) {
-      console.error(e);
-      toast.error("Não foi possível carregar os pedidos");
+      setPedidos(normalizados);
+    } catch (err) {
+      console.error(err);
+      toast.error("Não foi possível carregar os pedidos.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchEncomendas();
+    fetchPedidos();
   }, []);
 
-  /** une uniformes + canecas em uma lista única para tabela/filtros */
-  const pedidosUnificados: PedidoUnificado[] = useMemo(() => {
-    const uni: PedidoUnificado[] = [];
-
-    for (const e of encomendas) {
-      uni.push({
-        id: e.id,
-        txid: e.txid,
-        nome: e.nome,
-        telefone: e.telefone,
-        email: e.email,
-        status: e.status,
-        valorTotal: e.valorTotal,
-        valorPago: e.valorPago,
-        comprovanteBase64: e.comprovanteBase64 ?? null,
-        createdAt: e.createdAt,
-        fonte: "UNIFORME",
-        modelo: e.modelo,
-        tamanho: e.tamanho,
-        tipoPedidoUniforme: e.tipoPedido,
-        nomeCamisa: e.nomeCamisa,
-        numeroCamisa: e.numeroCamisa,
-      });
-    }
-
-    for (const c of pedidosCaneca) {
-      uni.push({
-        id: c.id,
-        txid: c.txid,
-        nome: c.nome,
-        telefone: c.telefone,
-        email: c.email,
-        status: c.status,
-        valorTotal: c.valorTotal,
-        valorPago: c.valorPago,
-        comprovanteBase64: c.comprovanteBase64 ?? null,
-        createdAt: c.createdAt,
-        fonte: "CANECA",
-        produtoCaneca: c.produto,
-        quantidade: c.quantidade,
-      });
-    }
-
-    // ordena do mais recente pro mais antigo
-    return uni.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
-  }, [encomendas, pedidosCaneca]);
-
-  const filtradas = useMemo(() => {
+  // ======= filtros =======
+  const filtrados = useMemo(() => {
     const q = search.trim().toLowerCase();
 
-    return pedidosUnificados
+    return pedidos
       .filter((p) =>
-        statusFilter === "TODAS" ? true : p.status === statusFilter
+        statusFilter === "TODOS" ? true : p.status === statusFilter
       )
       .filter((p) => {
         if (!q) return true;
         return (
           p.nome.toLowerCase().includes(q) ||
           p.telefone.toLowerCase().includes(q) ||
-          p.email.toLowerCase().includes(q)
+          p.email.toLowerCase().includes(q) ||
+          p.txid.toLowerCase().includes(q)
         );
       });
-  }, [pedidosUnificados, search, statusFilter]);
+  }, [pedidos, search, statusFilter]);
 
-  // ===== MÉTRICAS GERAIS (uniformes + canecas) =====
+  // ======= métricas gerais =======
   const {
     totalPedidos,
-    totalConfirmados,
-    totalKitsUniforme,
-    totalBlusas,
-    totalValorEncomendas,
-    totalRecebido,
-    receitaAReceber,
-    modeloCounts,
+    totalPago,
+    totalMetade,
+    totalAguardando,
+    totalCancelado,
+    valorTotal,
+    valorRecebido,
+    valorAReceber,
     produtoCounts,
   } = useMemo(() => {
-    const stats = {
-      totalPedidos: 0,
-      totalConfirmados: 0,
-      totalKitsUniforme: 0,
-      totalBlusas: 0,
-      totalValorEncomendas: 0,
-      totalRecebido: 0,
-      receitaAReceber: 0,
-      modeloCounts: {
-        BRANCA: 0,
-        AZUL: 0,
-        AZUL_SEM_MANGA: 0,
-      } as Record<Modelo, number>,
-      produtoCounts: {
-        kitUniforme: 0,
-        camisa: 0,
-        caneca: 0,
-        tirante: 0,
-        kitCaneca: 0,
-      },
+    let totalPedidos = 0;
+    let totalPago = 0;
+    let totalMetade = 0;
+    let totalAguardando = 0;
+    let totalCancelado = 0;
+
+    let valorTotal = 0;
+    let valorRecebido = 0;
+
+    const produtoCounts = {
+      kitUniforme: 0,
+      camisa: 0,
+      caneca: 0,
+      tirante: 0,
+      kitCaneca: 0,
     };
 
-    // UNIFORMES
-    for (const e of encomendas) {
-      stats.totalPedidos += 1;
+    for (const p of pedidos) {
+      totalPedidos += 1;
 
-      const valorTotal =
-        typeof e.valorTotal === "string"
-          ? parseFloat(e.valorTotal)
-          : Number(e.valorTotal || 0);
+      const vTotal =
+        typeof p.valorTotal === "string"
+          ? parseFloat(p.valorTotal)
+          : Number(p.valorTotal || 0);
+      valorTotal += vTotal;
 
-      const valorPagoRaw =
-        e.valorPago != null
-          ? typeof e.valorPago === "string"
-            ? parseFloat(e.valorPago)
-            : Number(e.valorPago)
+      const pagoRaw =
+        p.valorPago != null
+          ? typeof p.valorPago === "string"
+            ? parseFloat(p.valorPago)
+            : Number(p.valorPago)
           : null;
 
-      stats.totalValorEncomendas += valorTotal;
-      stats.modeloCounts[e.modelo] += 1;
+      // status
+      if (p.status === "PAGO") totalPago += 1;
+      else if (p.status === "PAGO_METADE") totalMetade += 1;
+      else if (p.status === "CANCELADO") totalCancelado += 1;
+      else totalAguardando += 1;
 
-      if (e.tipoPedido === "KIT") {
-        stats.totalKitsUniforme += 1;
-        stats.produtoCounts.kitUniforme += 1;
+      // recebido
+      if (p.status === "PAGO") {
+        valorRecebido +=
+          pagoRaw != null && !Number.isNaN(pagoRaw) ? pagoRaw : vTotal;
+      } else if (p.status === "PAGO_METADE") {
+        valorRecebido +=
+          pagoRaw != null && !Number.isNaN(pagoRaw) ? pagoRaw : vTotal / 2;
       }
-      if (e.tipoPedido === "BLUSA") {
-        stats.totalBlusas += 1;
-        stats.produtoCounts.camisa += 1;
-      }
 
-      const isConfirmado =
-        e.status === "PAGO_METADE" ||
-        e.status === "CONFIRMADO" ||
-        e.status === "PAGO";
+      // conta produtos (por item)
+      const items = Array.isArray(p.itemsJson) ? p.itemsJson : [];
 
-      if (isConfirmado) {
-        stats.totalConfirmados += 1;
-
-        let recebido = 0;
-        if (e.status === "PAGO_METADE") {
-          recebido =
-            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
-              ? valorPagoRaw
-              : valorTotal / 2;
-        } else {
-          recebido =
-            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
-              ? valorPagoRaw
-              : valorTotal;
+      for (const item of items as ItemCarrinho[]) {
+        if (item.kind === "UNIFORME") {
+          if (item.tipoPedido === "KIT") produtoCounts.kitUniforme += item.quantity || 1;
+          else produtoCounts.camisa += item.quantity || 1;
+        } else if (item.kind === "CANECA") {
+          if (item.tipoProduto === "CANECA") produtoCounts.caneca += item.quantity || 1;
+          else if (item.tipoProduto === "TIRANTE") produtoCounts.tirante += item.quantity || 1;
+          else produtoCounts.kitCaneca += item.quantity || 1;
         }
-
-        stats.totalRecebido += recebido;
       }
     }
 
-    // CANECAS / TIRANTES
-    for (const c of pedidosCaneca) {
-      stats.totalPedidos += 1;
+    const valorAReceber = Math.max(valorTotal - valorRecebido, 0);
 
-      const valorTotal =
-        typeof c.valorTotal === "string"
-          ? parseFloat(c.valorTotal)
-          : Number(c.valorTotal || 0);
+    return {
+      totalPedidos,
+      totalPago,
+      totalMetade,
+      totalAguardando,
+      totalCancelado,
+      valorTotal,
+      valorRecebido,
+      valorAReceber,
+      produtoCounts,
+    };
+  }, [pedidos]);
 
-      const valorPagoRaw =
-        c.valorPago != null
-          ? typeof c.valorPago === "string"
-            ? parseFloat(c.valorPago)
-            : Number(c.valorPago)
-          : null;
+  // ======= dados dos gráficos =======
+  const pieStatusData = useMemo(
+    () => [
+      {
+        key: "aguardando",
+        label: "Aguardando",
+        value: totalAguardando,
+      },
+      {
+        key: "pago",
+        label: "Pago",
+        value: totalPago,
+      },
+      {
+        key: "metade",
+        label: "Pago metade",
+        value: totalMetade,
+      },
+      {
+        key: "cancelado",
+        label: "Cancelado",
+        value: totalCancelado,
+      },
+    ],
+    [totalAguardando, totalPago, totalMetade, totalCancelado]
+  );
 
-      stats.totalValorEncomendas += valorTotal;
-
-      const qtd = c.quantidade || 1;
-      if (c.produto === "CANECA") stats.produtoCounts.caneca += qtd;
-      if (c.produto === "TIRANTE") stats.produtoCounts.tirante += qtd;
-      if (c.produto === "KIT") stats.produtoCounts.kitCaneca += qtd;
-
-      const isConfirmado =
-        c.status === "PAGO_METADE" ||
-        c.status === "CONFIRMADO" ||
-        c.status === "PAGO";
-
-      if (isConfirmado) {
-        stats.totalConfirmados += 1;
-
-        let recebido = 0;
-        if (c.status === "PAGO_METADE") {
-          recebido =
-            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
-              ? valorPagoRaw
-              : valorTotal / 2;
-        } else {
-          recebido =
-            valorPagoRaw != null && !Number.isNaN(valorPagoRaw)
-              ? valorPagoRaw
-              : valorTotal;
-        }
-
-        stats.totalRecebido += recebido;
-      }
-    }
-
-    stats.receitaAReceber =
-      stats.totalValorEncomendas - stats.totalRecebido > 0
-        ? stats.totalValorEncomendas - stats.totalRecebido
-        : 0;
-
-    return stats;
-  }, [encomendas, pedidosCaneca]);
-
-  // DADOS PARA GRÁFICOS
-  const pieProdutoData = useMemo(
+  const barProdutoData = useMemo(
     () => [
       {
         key: "kitUniforme",
         label: "Kit uniforme",
-        value: produtoCounts.kitUniforme,
+        quantidade: produtoCounts.kitUniforme,
+        fill: "#FACC15",
       },
       {
         key: "camisa",
         label: "Camisa",
-        value: produtoCounts.camisa,
+        quantidade: produtoCounts.camisa,
+        fill: "#F97316",
       },
       {
         key: "caneca",
         label: "Caneca",
-        value: produtoCounts.caneca,
+        quantidade: produtoCounts.caneca,
+        fill: "#22C55E",
       },
       {
         key: "tirante",
         label: "Tirante",
-        value: produtoCounts.tirante,
+        quantidade: produtoCounts.tirante,
+        fill: "#0EA5E9",
       },
       {
         key: "kitCaneca",
         label: "Kit caneca",
-        value: produtoCounts.kitCaneca,
+        quantidade: produtoCounts.kitCaneca,
+        fill: "#A855F7",
       },
     ],
     [produtoCounts]
   );
-
-  const barModeloData = useMemo(
-    () => [
-      {
-        key: "azulSemManga",
-        modeloLabel: "Azul s/ manga",
-        pedidos: modeloCounts.AZUL_SEM_MANGA,
-        fill: "#22C55E",
-      },
-      {
-        key: "azul",
-        modeloLabel: "Azul",
-        pedidos: modeloCounts.AZUL,
-        fill: "#3B82F6",
-      },
-      {
-        key: "branca",
-        modeloLabel: "Branca",
-        pedidos: modeloCounts.BRANCA,
-        fill: "#F97316",
-      },
-    ],
-    [modeloCounts]
-  );
-
-  const confirmarPedido = async (
-    ped: PedidoUnificado,
-    tipo: "METADE" | "TOTAL"
-  ) => {
-    try {
-      setActing(ped.txid);
-
-      const url =
-        ped.fonte === "UNIFORME"
-          ? "/api/pedidos/admin/confirmar"
-          : "/api/pedidos-canecas/admin/confirmar";
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          txid: ped.txid,
-          aprovado: true,
-          tipo,
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      toast.success(
-        tipo === "METADE"
-          ? "Pedido confirmado (pago metade)."
-          : "Pedido confirmado (pago total)."
-      );
-      fetchEncomendas();
-    } catch {
-      toast.error("Falha ao confirmar pedido.");
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const cancelarPedido = async (ped: PedidoUnificado) => {
-    try {
-      setActing(ped.txid);
-
-      const url =
-        ped.fonte === "UNIFORME"
-          ? "/api/pedidos/admin/confirmar"
-          : "/api/pedidos-canecas/admin/confirmar";
-
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          txid: ped.txid,
-          aprovado: false,
-          motivo: "Pagamento divergente.",
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-      toast.success("Pedido cancelado.");
-      fetchEncomendas();
-    } catch {
-      toast.error("Falha ao cancelar pedido.");
-    } finally {
-      setActing(null);
-    }
-  };
-
-  const getProdutoLabel = (p: PedidoUnificado) => {
-    if (p.fonte === "UNIFORME") {
-      return p.tipoPedidoUniforme === "KIT" ? "Kit uniforme" : "Camisa";
-    }
-    return humanProdutoCaneca(p.produtoCaneca);
-  };
 
   return (
     <main className="min-h-screen bg-[#020817] px-4 py-8">
@@ -630,13 +368,13 @@ export default function AdminPage() {
               Painel de Pedidos — Energizada
             </h1>
             <p className="text-sm text-slate-400">
-              Acompanhe pedidos de uniformes e produtos (canecas e tirantes).
+              Pedidos gerais pagos via Mercado Pago (carrinho).
             </p>
           </div>
 
           <Button
             variant="outline"
-            onClick={fetchEncomendas}
+            onClick={fetchPedidos}
             className="border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
           >
             <RefreshCw className="mr-2 h-4 w-4" />
@@ -649,8 +387,8 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <Shirt className="h-4 w-4 text-yellow-400" />
-                Total de pedidos (todos)
+                <Package className="h-4 w-4 text-yellow-400" />
+                Total de pedidos
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -658,7 +396,7 @@ export default function AdminPage() {
                 {totalPedidos}
               </p>
               <p className="text-[11px] text-slate-400">
-                {totalConfirmados} com pagamento registrado
+                {totalPago} pagos • {totalAguardando} aguardando
               </p>
             </CardContent>
           </Card>
@@ -666,23 +404,16 @@ export default function AdminPage() {
           <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
             <CardHeader className="pb-1">
               <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
-                <PieChartIcon className="h-4 w-4 text-yellow-400" />
-                Kits x Camisas (uniforme)
+                <Shirt className="h-4 w-4 text-yellow-400" />
+                Produtos vendidos
               </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-100">
-                <span className="font-semibold text-yellow-400">
-                  {totalKitsUniforme}
-                </span>{" "}
-                kits •{" "}
-                <span className="font-semibold text-yellow-400">
-                  {totalBlusas}
-                </span>{" "}
-                camisas
+                Uniformes (kits + camisas) e canecas/tirantes combinados.
               </p>
               <p className="text-[11px] text-slate-400 mt-1">
-                Considera apenas pedidos de uniforme
+                Veja a distribuição no gráfico de barras.
               </p>
             </CardContent>
           </Card>
@@ -696,10 +427,10 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <p className="text-2xl font-semibold text-slate-50">
-                {currency(totalValorEncomendas)}
+                {currency(valorTotal)}
               </p>
               <p className="text-[11px] text-slate-400">
-                Soma de todos os pedidos (uniforme + canecas)
+                Soma de todos os pedidos criados no carrinho.
               </p>
             </CardContent>
           </Card>
@@ -715,13 +446,13 @@ export default function AdminPage() {
               <p className="text-sm text-slate-100">
                 Recebido:{" "}
                 <span className="font-semibold text-emerald-300">
-                  {currency(totalRecebido)}
+                  {currency(valorRecebido)}
                 </span>
               </p>
               <p className="text-sm text-slate-100">
                 A receber:{" "}
                 <span className="font-semibold text-amber-300">
-                  {currency(receitaAReceber)}
+                  {currency(valorAReceber)}
                 </span>
               </p>
             </CardContent>
@@ -730,15 +461,14 @@ export default function AdminPage() {
 
         {/* GRÁFICOS */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Pizza por tipo de produto */}
+          {/* Pizza por status */}
           <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
                 <PieChartIcon className="h-4 w-4 text-yellow-400" />
-                Distribuição por tipo de produto
+                Distribuição por status
               </CardTitle>
             </CardHeader>
-
             <CardContent className="pb-6 pt-0">
               {totalPedidos === 0 ? (
                 <div className="flex h-64 items-center justify-center text-xs text-slate-500">
@@ -746,7 +476,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <ChartContainer
-                  config={produtoChartConfig}
+                  config={statusChartConfig}
                   className="mx-auto h-64 w-full max-w-[360px]"
                 >
                   <PieChart>
@@ -760,7 +490,7 @@ export default function AdminPage() {
                       }
                     />
                     <Pie
-                      data={pieProdutoData}
+                      data={pieStatusData}
                       dataKey="value"
                       nameKey="label"
                       innerRadius={70}
@@ -768,13 +498,12 @@ export default function AdminPage() {
                       paddingAngle={4}
                       strokeWidth={4}
                     >
-                      {pieProdutoData.map((entry) => (
+                      {pieStatusData.map((entry) => (
                         <Cell
                           key={entry.key}
                           fill={`var(--color-${entry.key})`}
                         />
                       ))}
-
                       <Label
                         content={({ viewBox }) => {
                           if (
@@ -783,11 +512,6 @@ export default function AdminPage() {
                             !("cy" in viewBox)
                           )
                             return null;
-
-                          const total = pieProdutoData.reduce(
-                            (acc, cur) => acc + cur.value,
-                            0
-                          );
 
                           return (
                             <text
@@ -801,7 +525,7 @@ export default function AdminPage() {
                                 y={viewBox.cy}
                                 className="fill-slate-50 text-2xl font-bold"
                               >
-                                {total}
+                                {totalPedidos}
                               </tspan>
                               <tspan
                                 x={viewBox.cx}
@@ -821,32 +545,31 @@ export default function AdminPage() {
             </CardContent>
           </Card>
 
-          {/* Bar por modelo de camisa */}
+          {/* barras por tipo de produto */}
           <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
                 <BarChart3 className="h-4 w-4 text-yellow-400" />
-                Pedidos por modelo de camisa
+                Quantidade por tipo de produto
               </CardTitle>
             </CardHeader>
-
             <CardContent className="pb-6 pt-0">
-              {encomendas.length === 0 ? (
+              {pedidos.length === 0 ? (
                 <div className="flex h-64 items-center justify-center text-xs text-slate-500">
                   Sem dados suficientes para o gráfico.
                 </div>
               ) : (
                 <ChartContainer
-                  config={modeloChartConfig}
+                  config={produtoChartConfig}
                   className="h-64 w-full"
                 >
                   <BarChart
-                    data={barModeloData}
+                    data={barProdutoData}
                     margin={{ top: 24, left: 16, right: 16, bottom: 8 }}
                   >
                     <CartesianGrid vertical={false} stroke="#111827" />
                     <XAxis
-                      dataKey="modeloLabel"
+                      dataKey="label"
                       tickLine={false}
                       axisLine={false}
                       tickMargin={10}
@@ -860,7 +583,6 @@ export default function AdminPage() {
                       axisLine={false}
                       allowDecimals={false}
                     />
-
                     <ChartTooltip
                       cursor={false}
                       content={
@@ -870,13 +592,12 @@ export default function AdminPage() {
                         />
                       }
                     />
-
-                    <Bar dataKey="pedidos" radius={8}>
-                      {barModeloData.map((entry) => (
+                    <Bar dataKey="quantidade" radius={8}>
+                      {barProdutoData.map((entry) => (
                         <Cell key={entry.key} fill={entry.fill} />
                       ))}
                       <LabelList
-                        dataKey="pedidos"
+                        dataKey="quantidade"
                         position="top"
                         className="fill-slate-100 text-xs"
                       />
@@ -894,7 +615,7 @@ export default function AdminPage() {
             <div className="relative w-full md:max-w-sm">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
-                placeholder="Buscar por nome, telefone ou e-mail"
+                placeholder="Buscar por nome, telefone, e-mail ou TXID"
                 className="pl-8 border-slate-700 bg-slate-950 text-slate-50 placeholder:text-slate-500 focus-visible:ring-sky-500"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -903,12 +624,10 @@ export default function AdminPage() {
 
             <div className="flex flex-wrap gap-2">
               {[
-                { id: "TODAS", label: "Todas" },
+                { id: "TODOS", label: "Todos" },
                 { id: "AGUARDANDO_PAGAMENTO", label: "Aguard. pag." },
-                { id: "AGUARDANDO_VALIDACAO", label: "Aguard. val." },
                 { id: "PAGO_METADE", label: "Pago metade" },
-                { id: "CONFIRMADO", label: "Pago total" },
-                { id: "PAGO", label: "Pago total (antigo)" },
+                { id: "PAGO", label: "Pago" },
                 { id: "CANCELADO", label: "Cancelado" },
               ].map((opt) => (
                 <Button
@@ -932,11 +651,11 @@ export default function AdminPage() {
           </CardContent>
         </Card>
 
-        {/* TABELA – TODOS OS PEDIDOS */}
+        {/* TABELA */}
         <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
           <CardHeader>
             <CardTitle className="text-slate-50">
-              Pedidos (uniformes e canecas)
+              Pedidos (carrinho + Mercado Pago)
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
@@ -945,9 +664,9 @@ export default function AdminPage() {
                 <tr>
                   <th className="py-2 pr-4 text-left">Data</th>
                   <th className="py-2 pr-4 text-left">Cliente</th>
-                  <th className="py-2 pr-4 text-left">Produto / Detalhes</th>
+                  <th className="py-2 pr-4 text-left">Resumo dos itens</th>
                   <th className="py-2 pr-4 text-left">Status</th>
-                  <th className="py-2 pr-4 text-right">Valor</th>
+                  <th className="py-2 pr-4 text-right">Total</th>
                   <th className="py-2 pr-4 text-right">Ações</th>
                 </tr>
               </thead>
@@ -961,7 +680,7 @@ export default function AdminPage() {
                       Carregando…
                     </td>
                   </tr>
-                ) : filtradas.length === 0 ? (
+                ) : filtrados.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -971,21 +690,33 @@ export default function AdminPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtradas.map((ped) => {
-                    const valor =
-                      typeof ped.valorTotal === "string"
-                        ? parseFloat(ped.valorTotal)
-                        : Number(ped.valorTotal || 0);
+                  filtrados.map((p) => {
+                    const vTotal =
+                      typeof p.valorTotal === "string"
+                        ? parseFloat(p.valorTotal)
+                        : Number(p.valorTotal || 0);
 
-                    const isUniforme = ped.fonte === "UNIFORME";
+                    const itens = Array.isArray(p.itemsJson)
+                      ? (p.itemsJson as ItemCarrinho[])
+                      : [];
+
+                    const resumo =
+                      itens.length === 0
+                        ? "-"
+                        : itens
+                            .map(
+                              (i) =>
+                                `${i.quantity || 1}x ${i.label ?? "Produto"}`
+                            )
+                            .join(" • ");
 
                     return (
                       <tr
-                        key={ped.id}
+                        key={p.id}
                         className="border-b border-slate-800 last:border-0"
                       >
                         <td className="py-3 pr-4 text-xs text-slate-400">
-                          {new Date(ped.createdAt).toLocaleString("pt-BR", {
+                          {new Date(p.createdAt).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
                             year: "2-digit",
@@ -993,107 +724,33 @@ export default function AdminPage() {
                             minute: "2-digit",
                           })}
                         </td>
-
                         <td className="py-3 pr-4">
                           <div className="font-medium text-slate-50">
-                            {ped.nome}
+                            {p.nome}
                           </div>
                           <div className="text-[10px] text-slate-500">
-                            TXID {ped.txid}
+                            TXID {p.txid}
                           </div>
                         </td>
-
                         <td className="py-3 pr-4 text-xs text-slate-100">
-                          <div className="font-semibold">
-                            {getProdutoLabel(ped)}
-                          </div>
-
-                          {isUniforme ? (
-                            <>
-                              <div>{humanModelo(ped.modelo)}</div>
-                              <div>
-                                {humanTipoPedidoUniforme(
-                                  ped.tipoPedidoUniforme
-                                )}
-                              </div>
-                              <div>
-                                Tam:{" "}
-                                <span className="font-semibold">
-                                  {ped.tamanho}
-                                </span>
-                              </div>
-                              <div>
-                                {ped.nomeCamisa} • #{ped.numeroCamisa}
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div>{humanProdutoCaneca(ped.produtoCaneca)}</div>
-                              <div>
-                                Qtde:{" "}
-                                <span className="font-semibold">
-                                  {ped.quantidade ?? 1}
-                                </span>
-                              </div>
-                            </>
-                          )}
+                          {resumo}
                         </td>
-
                         <td className="py-3 pr-4">
-                          <StatusBadge status={ped.status} />
+                          <StatusBadge status={p.status} />
                         </td>
-
                         <td className="py-3 pr-4 text-right font-medium text-sky-400">
-                          {currency(valor)}
+                          {currency(vTotal)}
                         </td>
-
                         <td className="py-3 pl-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-sky-400 hover:bg-slate-800"
-                              title="Ver detalhes"
-                              onClick={() => setSelected(ped)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-
-                            {(ped.status === "AGUARDANDO_VALIDACAO" ||
-                              ped.status === "PAGO_METADE" ||
-                              ped.status === "AGUARDANDO_PAGAMENTO") && (
-                              <>
-                                <Button
-                                  size="icon-sm"
-                                  className="bg-violet-500 hover:bg-violet-600 text-white"
-                                  disabled={acting === ped.txid}
-                                  onClick={() =>
-                                    confirmarPedido(ped, "METADE")
-                                  }
-                                >
-                                  1/2
-                                </Button>
-                                <Button
-                                  size="icon-sm"
-                                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
-                                  disabled={acting === ped.txid}
-                                  onClick={() =>
-                                    confirmarPedido(ped, "TOTAL")
-                                  }
-                                >
-                                  <CheckCircle2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="icon-sm"
-                                  variant="destructive"
-                                  disabled={acting === ped.txid}
-                                  onClick={() => cancelarPedido(ped)}
-                                >
-                                  <BanknoteX className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-sky-400 hover:bg-slate-800"
+                            title="Ver detalhes"
+                            onClick={() => setSelected(p)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
                         </td>
                       </tr>
                     );
@@ -1118,8 +775,7 @@ export default function AdminPage() {
 
             {selected && (
               <div className="space-y-4 text-sm">
-                {/* Dados principais */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <p>
                     <span className="font-semibold">Cliente:</span>{" "}
                     {selected.nome}
@@ -1133,57 +789,13 @@ export default function AdminPage() {
                     {selected.email}
                   </p>
                   <p>
-                    <span className="font-semibold">Origem:</span>{" "}
-                    {selected.fonte === "UNIFORME"
-                      ? "Uniforme"
-                      : "Caneca / Tirante"}
+                    <span className="font-semibold">TXID:</span>{" "}
+                    {selected.txid}
                   </p>
-                  <p>
-                    <span className="font-semibold">Produto:</span>{" "}
-                    {getProdutoLabel(selected)}
-                  </p>
-
-                  {selected.fonte === "UNIFORME" ? (
-                    <>
-                      <p>
-                        <span className="font-semibold">Modelo:</span>{" "}
-                        {humanModelo(selected.modelo)}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Tipo:</span>{" "}
-                        {humanTipoPedidoUniforme(
-                          selected.tipoPedidoUniforme
-                        )}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Tamanho:</span>{" "}
-                        {selected.tamanho}
-                      </p>
-                      <p>
-                        <span className="font-semibold">
-                          Nome / número na camisa:
-                        </span>{" "}
-                        {selected.nomeCamisa} — #{selected.numeroCamisa}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <p>
-                        <span className="font-semibold">Produto:</span>{" "}
-                        {humanProdutoCaneca(selected.produtoCaneca)}
-                      </p>
-                      <p>
-                        <span className="font-semibold">Quantidade:</span>{" "}
-                        {selected.quantidade ?? 1}
-                      </p>
-                    </>
-                  )}
-
                   <p>
                     <span className="font-semibold">Status:</span>{" "}
                     {selected.status}
                   </p>
-
                   <p>
                     <span className="font-semibold">Valor total:</span>{" "}
                     {currency(
@@ -1192,7 +804,6 @@ export default function AdminPage() {
                         : Number(selected.valorTotal || 0)
                     )}
                   </p>
-
                   {selected.valorPago != null && (
                     <p>
                       <span className="font-semibold">Valor pago:</span>{" "}
@@ -1205,28 +816,48 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                {/* Comprovante */}
-                {selected.comprovanteBase64 && (
-                  <>
-                    <Separator className="bg-slate-800" />
-                    <div className="space-y-2">
-                      <p className="text-sm font-semibold text-slate-50">
-                        Comprovante de pagamento
-                      </p>
-                      <div className="rounded-md border border-slate-800 bg-slate-950 p-2">
-                        <img
-                          src={
-                            selected.comprovanteBase64.startsWith("data:")
-                              ? selected.comprovanteBase64
-                              : `data:image/jpeg;base64,${selected.comprovanteBase64}`
-                          }
-                          alt={`Comprovante de pagamento de ${selected.nome}`}
-                          className="max-h-80 w-full rounded object-contain"
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+                <Separator className="bg-slate-800" />
+
+                <div className="space-y-2">
+                  <p className="font-semibold">Itens do carrinho</p>
+                  <div className="space-y-1 text-xs">
+                    {Array.isArray(selected.itemsJson) &&
+                      (selected.itemsJson as ItemCarrinho[]).map((i, idx) => (
+                        <div
+                          key={idx}
+                          className="rounded-md border border-slate-800 bg-slate-950 px-2 py-1"
+                        >
+                          <div className="font-semibold">
+                            {i.quantity || 1}x {i.label}
+                          </div>
+                          <div>
+                            Unitário: {currency(i.unitPrice || 0)} • Subtotal:{" "}
+                            {currency((i.unitPrice || 0) * (i.quantity || 1))}
+                          </div>
+                          {i.kind === "UNIFORME" && (
+                            <div className="mt-1 text-[11px] text-slate-300">
+                              {i.tipoPedido === "KIT"
+                                ? "Kit uniforme"
+                                : "Camisa"}
+                              {i.modelo && ` • Modelo: ${i.modelo}`}
+                              {i.tamanho && ` • Tam: ${i.tamanho}`}
+                              {i.nomeCamisa &&
+                                ` • Nome: ${i.nomeCamisa} #${i.numeroCamisa}`}
+                            </div>
+                          )}
+                          {i.kind === "CANECA" && (
+                            <div className="mt-1 text-[11px] text-slate-300">
+                              {i.tipoProduto === "CANECA"
+                                ? "Caneca 850 mL"
+                                : i.tipoProduto === "TIRANTE"
+                                ? "Tirante"
+                                : "Kit caneca + tirante"}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
             )}
           </DialogContent>

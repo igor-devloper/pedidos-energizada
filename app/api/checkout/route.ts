@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         ? [
             {
               id: "TAXA_SERVICO",
-              title: "Taxa de serviço Mercado Pago",
+              title: "Taxa de serviço",
               quantity: 1,
               unit_price: Number(taxaTotal.toFixed(2)),
               currency_id: "BRL" as const,

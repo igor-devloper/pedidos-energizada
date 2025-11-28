@@ -4,14 +4,11 @@ import { paymentClient } from "@/lib/mercado-pago"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
-export const dynamic = "force-dynamic"
 
 type MpWebhookBody = {
   action: string
   api_version?: string
-  data: {
-    id: string
-  }
+  data: { id: string }
   date_created?: string
   live_mode?: boolean
   type: string
@@ -28,7 +25,7 @@ function mapMpStatusToInterno(status?: string): StatusInterno {
 }
 
 async function atualizarPedidoPorPagamento(paymentId: string) {
-  console.log("[WEBHOOK MP] Iniciando atualização para payment:", paymentId)
+  console.log("[MP webhook] Buscando pagamento:", paymentId)
 
   const payment = await paymentClient.get({ id: paymentId })
 
@@ -36,7 +33,7 @@ async function atualizarPedidoPorPagamento(paymentId: string) {
   const mpStatus = payment.status as string | undefined
   const amount = Number(payment.transaction_amount || 0)
 
-  console.log("[WEBHOOK MP] Dados do pagamento:", {
+  console.log("[MP webhook] payment:", {
     id: paymentId,
     txid,
     status: mpStatus,
@@ -44,51 +41,71 @@ async function atualizarPedidoPorPagamento(paymentId: string) {
   })
 
   if (!txid) {
-    console.warn("[WEBHOOK MP] Pagamento sem external_reference:", paymentId)
+    console.warn("[MP webhook] Pagamento sem external_reference (txid).", paymentId)
     return
   }
 
   const novoStatus = mapMpStatusToInterno(mpStatus)
 
   try {
-    await prisma.pedidoCarrinho.update({
+    const pedidoAtualizado = await prisma.pedidoCarrinho.update({
       where: { txid },
       data: {
         status: novoStatus,
         ...(amount > 0 && { valorPago: amount }),
       },
     })
-    console.log("[WEBHOOK MP] Pedido atualizado:", txid, "=>", novoStatus)
-  } catch (err: any) {
-    console.error("[WEBHOOK MP] Erro ao atualizar pedido:", err.message)
+
+    console.log(
+      "[MP webhook] PedidoCarrinho atualizado:",
+      pedidoAtualizado.id,
+      "txid:",
+      txid,
+      "=>",
+      novoStatus,
+      "valorPago:",
+      amount,
+    )
+  } catch (dbErr: any) {
+    console.error("[MP webhook] Erro ao atualizar banco:", dbErr)
   }
 }
 
 export async function POST(req: Request) {
-  console.log("[WEBHOOK MP] ========== WEBHOOK CHAMADO ==========")
-  console.log("[WEBHOOK MP] URL:", req.url)
-  console.log("[WEBHOOK MP] Headers:", Object.fromEntries(req.headers.entries()))
-
   try {
-    const body = (await req.json()) as MpWebhookBody
-    console.log("[WEBHOOK MP] Body recebido:", JSON.stringify(body, null, 2))
+    console.log("[MP webhook] Recebido POST:", req.url)
+
+    const bodyText = await req.text()
+    console.log("[MP webhook] Body raw:", bodyText)
+
+    let body: MpWebhookBody
+    try {
+      body = JSON.parse(bodyText)
+    } catch (parseErr) {
+      console.error("[MP webhook] JSON inválido:", parseErr)
+      // Mesmo com erro, devolve 200 para evitar 502 no MP
+      return NextResponse.json({ ok: false, reason: "invalid-json" }, { status: 200 })
+    }
+
+    console.log("[MP webhook] Body parsed:", body)
 
     if (body.type !== "payment" || !body.data?.id) {
-      console.log("[WEBHOOK MP] Evento ignorado - não é pagamento")
+      console.log("[MP webhook] Evento ignorado:", body.type)
       return NextResponse.json({ ok: true, ignored: true }, { status: 200 })
     }
 
     await atualizarPedidoPorPagamento(body.data.id)
 
-    console.log("[WEBHOOK MP] Processamento concluído com sucesso")
+    console.log("[MP webhook] Processamento concluído com sucesso")
     return NextResponse.json({ ok: true }, { status: 200 })
   } catch (err: any) {
-    console.error("[WEBHOOK MP] ERRO:", err.message, err.stack)
+    console.error("[MP webhook] Erro geral:", err)
+    // IMPORTANTE: ainda devolve 200 para não gerar 502 no painel do MP
     return NextResponse.json({ ok: false, error: err.message }, { status: 200 })
   }
 }
 
-export async function GET() {
-  console.log("[WEBHOOK MP] GET chamado - endpoint ativo")
-  return NextResponse.json({ status: "ok", message: "Webhook ativo" }, { status: 200 })
+export async function GET(req: Request) {
+  console.log("[MP webhook] GET", req.url)
+  return NextResponse.json({ ok: true, message: "Webhook endpoint ativo" })
 }

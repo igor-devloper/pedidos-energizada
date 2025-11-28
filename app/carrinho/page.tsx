@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import type { CartItem, Modelo, Tamanho } from "@/lib/cart-types";
 import {
@@ -50,7 +51,6 @@ export default function CarrinhoPage() {
   const [telefone, setTelefone] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // novo: método de pagamento + parcelas
   const [metodoPagamento, setMetodoPagamento] =
     useState<MetodoPagamento>("pix");
   const [parcelas, setParcelas] = useState<Parcelas>(1);
@@ -60,7 +60,6 @@ export default function CarrinhoPage() {
     [items]
   );
 
-  // 🔹 resumo de taxas em cima do subtotal (total do carrinho)
   const resumoTaxas = useMemo(
     () => calcularTotalComTaxas(total, metodoPagamento, parcelas),
     [total, metodoPagamento, parcelas]
@@ -76,19 +75,37 @@ export default function CarrinhoPage() {
       return;
     }
 
-    // valida uniforms preenchidos
+    // valida uniforms
     for (const item of items) {
       if (item.kind === "UNIFORME") {
-        if (
-          !item.modelo ||
-          !item.tamanho ||
-          !item.nomeCamisa ||
-          !item.numeroCamisa
-        ) {
+        if (!item.modelo || !item.tamanho || !item.nomeCamisa) {
           toast.error(
-            "Preencha modelo, tamanho, nome e número da camisa para todos os uniformes."
+            "Preencha modelo, tamanho e nome da camisa para todos os uniformes."
           );
           return;
+        }
+
+        const jaTem = (item as any).jaTemCamisa ?? false;
+
+        if (jaTem) {
+          if (!(item as any).numeroCamisaAtual) {
+            toast.error(
+              "Informe o número que você já utiliza na camisa."
+            );
+            return;
+          }
+        } else {
+          const iAny = item as any;
+          if (
+            !iAny.numeroOpcao1 &&
+            !iAny.numeroOpcao2 &&
+            !iAny.numeroOpcao3
+          ) {
+            toast.error(
+              "Informe pelo menos uma opção de número para a camisa (até 3 opções)."
+            );
+            return;
+          }
         }
       }
     }
@@ -122,7 +139,7 @@ export default function CarrinhoPage() {
       }
 
       clearCart();
-      window.location.href = initPoint; // redireciona pro MP
+      window.location.href = initPoint;
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Erro ao redirecionar para pagamento.");
@@ -186,9 +203,9 @@ export default function CarrinhoPage() {
                         {item.kind === "CANECA" && (
                           <p className="text-[11px] text-blue-300 mt-1">
                             Tipo:{" "}
-                            {item.tipoProduto === "CANECA"
+                            {(item as any).tipoProduto === "CANECA"
                               ? "Caneca 850 mL"
-                              : item.tipoProduto === "TIRANTE"
+                              : (item as any).tipoProduto === "TIRANTE"
                               ? "Tirante"
                               : "Kit Caneca + Tirante"}
                           </p>
@@ -235,6 +252,8 @@ export default function CarrinhoPage() {
                     {item.kind === "UNIFORME" && (
                       <>
                         <Separator className="bg-blue-800" />
+
+                        {/* modelo + tamanho + nome */}
                         <div className="grid gap-3 md:grid-cols-2">
                           <div className="space-y-1">
                             <Label className="text-[11px] text-blue-200">
@@ -303,29 +322,112 @@ export default function CarrinhoPage() {
                               className="bg-blue-950 border-blue-700 text-xs uppercase"
                             />
                           </div>
+                        </div>
 
-                          <div className="space-y-1">
-                            <Label className="text-[11px] text-blue-200">
-                              Número
-                            </Label>
-                            <Input
-                              value={item.numeroCamisa ?? ""}
-                              onChange={(e) =>
+                        {/* checkbox: já tenho camisa? */}
+                        <div className="mt-3 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`jaTemCamisa-${item.id}`}
+                              checked={(item as any).jaTemCamisa ?? false}
+                              onCheckedChange={(checked) =>
                                 updateItem(item.id, {
-                                  numeroCamisa: e.target.value
-                                    .replace(/\D/g, "")
-                                    .slice(0, 2),
+                                  jaTemCamisa: Boolean(checked),
+                                  // ao trocar, limpa campos de número
+                                  numeroCamisaAtual: "",
+                                  numeroOpcao1: "",
+                                  numeroOpcao2: "",
+                                  numeroOpcao3: "",
                                 })
                               }
-                              placeholder="10"
-                              className="bg-blue-950 border-blue-700 text-xs w-20"
                             />
+                            <Label
+                              htmlFor={`jaTemCamisa-${item.id}`}
+                              className="text-[11px] text-blue-200 cursor-pointer"
+                            >
+                              Já tenho camisa da Atlética e quero manter o
+                              número que uso hoje.
+                            </Label>
                           </div>
+
+                          {(item as any).jaTemCamisa ? (
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-blue-200">
+                                Número que você já usa na camisa
+                              </Label>
+                              <Input
+                                value={(item as any).numeroCamisaAtual ?? ""}
+                                onChange={(e) =>
+                                  updateItem(item.id, {
+                                    numeroCamisaAtual: e.target.value
+                                      .replace(/\D/g, "")
+                                      .slice(0, 2),
+                                  })
+                                }
+                                placeholder="10"
+                                className="bg-blue-950 border-blue-700 text-xs w-24"
+                              />
+                              <p className="text-[10px] text-blue-300">
+                                Vamos tentar manter exatamente esse número
+                                no novo uniforme.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <Label className="text-[11px] text-blue-200">
+                                Sugestões de número (até 3 opções)
+                              </Label>
+                              <div className="grid grid-cols-3 gap-2 max-w-xs">
+                                <Input
+                                  value={(item as any).numeroOpcao1 ?? ""}
+                                  onChange={(e) =>
+                                    updateItem(item.id, {
+                                      numeroOpcao1: e.target.value
+                                        .replace(/\D/g, "")
+                                        .slice(0, 2),
+                                    })
+                                  }
+                                  placeholder="1ª"
+                                  className="bg-blue-950 border-blue-700 text-xs text-center"
+                                />
+                                <Input
+                                  value={(item as any).numeroOpcao2 ?? ""}
+                                  onChange={(e) =>
+                                    updateItem(item.id, {
+                                      numeroOpcao2: e.target.value
+                                        .replace(/\D/g, "")
+                                        .slice(0, 2),
+                                    })
+                                  }
+                                  placeholder="2ª"
+                                  className="bg-blue-950 border-blue-700 text-xs text-center"
+                                />
+                                <Input
+                                  value={(item as any).numeroOpcao3 ?? ""}
+                                  onChange={(e) =>
+                                    updateItem(item.id, {
+                                      numeroOpcao3: e.target.value
+                                        .replace(/\D/g, "")
+                                        .slice(0, 2),
+                                    })
+                                  }
+                                  placeholder="3ª"
+                                  className="bg-blue-950 border-blue-700 text-xs text-center"
+                                />
+                              </div>
+                              <p className="text-[10px] text-blue-300">
+                                A Atlética vai escolher um número que ainda
+                                não esteja em uso, respeitando essas
+                                preferências.
+                              </p>
+                            </div>
+                          )}
+
+                          <p className="mt-1 text-[10px] text-blue-300">
+                            {modeloLabel(item.modelo)} •{" "}
+                            {item.tamanho || "Tam. -"}
+                          </p>
                         </div>
-                        <p className="mt-1 text-[10px] text-blue-300">
-                          {modeloLabel(item.modelo)} •{" "}
-                          {item.tamanho || "Tam. -"}
-                        </p>
                       </>
                     )}
                   </div>
@@ -419,7 +521,7 @@ export default function CarrinhoPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
-                          {[1,2,3,4,5,6,7,8,9,10,11,12].map((p) => (
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((p) => (
                             <SelectItem key={p} value={String(p)}>
                               {p}x
                             </SelectItem>
@@ -458,15 +560,17 @@ export default function CarrinhoPage() {
                   disabled={items.length === 0 || loading}
                   onClick={handleCheckout}
                 >
-                  {loading
-                    ? <Loader2 className="h-5 w-5 animate-spin" />
-                    : "Finalizar"}
+                  {loading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    "Finalizar"
+                  )}
                 </Button>
 
                 {hasUniforme && (
                   <p className="text-[10px] text-blue-200 mt-1">
-                    Para uniformes, lembre de completar modelo, tamanho, nome e
-                    número antes de pagar.
+                    Para uniformes, escolha se já tem camisa (mantendo o
+                    número atual) ou informe até 3 opções de número novo.
                   </p>
                 )}
               </CardContent>

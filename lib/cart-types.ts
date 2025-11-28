@@ -24,6 +24,13 @@ export type CartUniformeItem = CartBase & {
   tamanho?: Tamanho;
   nomeCamisa?: string;
   numeroCamisa?: string;
+  jaTemCamisa?: boolean;        // se já possui camisa
+  numeroCamisaAtual?: string;   // número que já usa HOJE
+
+  // quando ainda não tem camisa: até 3 opções
+  numeroOpcao1?: string;
+  numeroOpcao2?: string;
+  numeroOpcao3?: string;
 };
 
 export type CartCanecaItem = CartBase & {

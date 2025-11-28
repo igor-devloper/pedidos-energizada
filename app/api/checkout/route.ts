@@ -22,11 +22,41 @@ function generateTxId() {
 type Body = {
   nome: string;
   email: string;
-  telefone: string;
+  telefone: string; // pode vir com máscara
   items: CartItem[];
   metodoPagamento: MetodoPagamento;
   parcelas: Parcelas;
 };
+
+// normaliza número: só dígitos, máximo 2
+function normalizarNumeroCamisa(n?: string | number | null): string | null {
+  if (n == null) return null;
+  const v = String(n).replace(/\D/g, "").slice(0, 2);
+  return v || null;
+}
+
+/**
+ * A partir de um Set com números já usados, escolhe a primeira
+ * opção disponível entre até 3 números sugeridos.
+ * Já adiciona o escolhido ao Set para não repetir.
+ */
+function escolherNumeroEntreOpcoes(
+  opcoesBrutas: (string | undefined | null)[],
+  numerosUsados: Set<string>,
+): string | null {
+  const opcoes = opcoesBrutas
+    .map((o) => normalizarNumeroCamisa(o))
+    .filter((o): o is string => Boolean(o));
+
+  for (const opc of opcoes) {
+    if (!numerosUsados.has(opc)) {
+      numerosUsados.add(opc);
+      return opc;
+    }
+  }
+
+  return null;
+}
 
 export async function POST(req: Request) {
   try {
@@ -42,14 +72,65 @@ export async function POST(req: Request) {
     if (!nome || !email || !telefone || !items?.length) {
       return NextResponse.json(
         { error: "Dados incompletos para checkout." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // subtotal sem taxas
-    const valorBase = items.reduce(
+    // telefone só com dígitos
+    const telefoneDigits = telefone.replace(/\D/g, "");
+
+    // ===== 1) Buscar números de camisa já usados =====
+    const pedidosExistentes = await prisma.pedidoCarrinho.findMany({
+      select: { itemsJson: true, status: true },
+    });
+
+    const numerosUsados = new Set<string>();
+
+    for (const p of pedidosExistentes) {
+      const itens = (p.itemsJson as any[]) ?? [];
+      for (const it of itens) {
+        if (it?.kind === "UNIFORME") {
+          const n = normalizarNumeroCamisa(
+            it.numeroCamisa ?? it.numeroCamisaAtual,
+          );
+          if (n) numerosUsados.add(n);
+        }
+      }
+    }
+
+    // ===== 2) Processar itens e escolher número de camisa =====
+    const itensProcessados = await Promise.all(
+      items.map(async (item) => {
+        if (item.kind !== "UNIFORME") {
+          return item;
+        }
+
+        const anyItem = item as any;
+
+        let numeroCamisa: string | null = null;
+
+        if (anyItem.jaTemCamisa && anyItem.numeroCamisaAtual) {
+          // quem já tem camisa mantém o número atual (sem checar duplicidade)
+          numeroCamisa = normalizarNumeroCamisa(anyItem.numeroCamisaAtual);
+        } else {
+          // novo uniforme -> escolher entre as 3 opções disponíveis
+          numeroCamisa = escolherNumeroEntreOpcoes(
+            [anyItem.numeroOpcao1, anyItem.numeroOpcao2, anyItem.numeroOpcao3],
+            numerosUsados,
+          );
+        }
+
+        return {
+          ...item,
+          numeroCamisa, // fica salvo dentro do JSON
+        } as CartItem & { numeroCamisa?: string | null };
+      }),
+    );
+
+    // ===== 3) Calcular valores (subtotal + taxas) =====
+    const valorBase = itensProcessados.reduce(
       (sum, i) => sum + i.unitPrice * i.quantity,
-      0
+      0,
     );
 
     const { totalConsumidor, taxaTotal, taxaPercentual } =
@@ -57,18 +138,17 @@ export async function POST(req: Request) {
 
     const txid = generateTxId();
 
-    // salva pedido geral
+    // ===== 4) Salvar PedidoCarrinho =====
     const pedido = await prisma.pedidoCarrinho.create({
       data: {
         nome,
         email,
-        telefone,
-        itemsJson: items,
+        telefone: telefoneDigits,
+        itemsJson: itensProcessados, // já com numeroCamisa definido
         valorTotal: totalConsumidor,
-        // totalConsumidor
         txid,
         status: "AGUARDANDO_PAGAMENTO",
-        // se tiver esses campos no schema, pode salvar:
+        // se quiser depois, pode adicionar campos extras no schema e salvar:
         // valorBase,
         // taxaRepassada: taxaTotal,
         // taxaPercentual,
@@ -77,19 +157,18 @@ export async function POST(req: Request) {
       } as any,
     });
 
+    // ===== 5) Criar preferência no Mercado Pago =====
     const preference = new Preference(mpClient);
     const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
 
-    // Itens que o MP vai exibir
     const mpItems = [
-      ...items.map((i) => ({
+      ...itensProcessados.map((i) => ({
         id: i.productId,
         title: i.label,
         quantity: i.quantity,
         unit_price: Number(i.unitPrice.toFixed(2)),
         currency_id: "BRL" as const,
       })),
-      // item extra para repassar a taxa
       ...(taxaTotal > 0
         ? [
             {
@@ -130,7 +209,7 @@ export async function POST(req: Request) {
     console.error("[POST /api/checkout]", err);
     return NextResponse.json(
       { error: "Erro ao iniciar checkout." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

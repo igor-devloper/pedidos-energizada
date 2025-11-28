@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, ShoppingCart, Trash2 } from "lucide-react";
+import { z } from "zod";
 
 import { useCart } from "@/components/cart-provider";
 import {
@@ -26,7 +27,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 
-import type { CartItem, Modelo, Tamanho } from "@/lib/cart-types";
+import type { Modelo, Tamanho } from "@/lib/cart-types";
 import {
   calcularTotalComTaxas,
   type MetodoPagamento,
@@ -41,6 +42,40 @@ const modeloLabel = (m?: Modelo) =>
     : m === "AZUL_SEM_MANGA"
     ? "Camisa azul s/ manga"
     : "-";
+
+/* --------- validação Zod --------- */
+const compradorSchema = z.object({
+  nome: z
+    .string()
+    .trim()
+    .min(3, "Informe seu nome completo."),
+  email: z
+    .string()
+    .trim()
+    .email("Informe um e-mail válido."),
+  telefone: z
+    .string()
+    .min(14, "Informe um telefone válido.") // (83) 99999-9999 => 15, mas aqui é mínimo
+    .max(16, "Telefone inválido."),
+});
+
+/* --------- máscara de telefone --------- */
+function formatarTelefone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+
+  if (digits.length === 0) return "";
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 6)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(
+      6,
+    )}`;
+  // 11 dígitos
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(
+    7,
+  )}`;
+}
 
 export default function CarrinhoPage() {
   const { items, total, removeItem, updateItem, clearCart } = useCart();
@@ -57,12 +92,12 @@ export default function CarrinhoPage() {
 
   const hasUniforme = useMemo(
     () => items.some((i) => i.kind === "UNIFORME"),
-    [items]
+    [items],
   );
 
   const resumoTaxas = useMemo(
     () => calcularTotalComTaxas(total, metodoPagamento, parcelas),
-    [total, metodoPagamento, parcelas]
+    [total, metodoPagamento, parcelas],
   );
 
   const handleCheckout = async () => {
@@ -70,17 +105,25 @@ export default function CarrinhoPage() {
       toast.error("Seu carrinho está vazio.");
       return;
     }
-    if (!nome || !email || !telefone) {
-      toast.error("Preencha nome, e-mail e telefone.");
+
+    // valida formulário com Zod
+    const parsed = compradorSchema.safeParse({
+      nome,
+      email,
+      telefone,
+    });
+
+    if (!parsed.success) {
+      toast.error(parsed.error.message || "Revise os dados do formulário.");
       return;
     }
 
-    // valida uniforms
+    // valida uniformes
     for (const item of items) {
       if (item.kind === "UNIFORME") {
         if (!item.modelo || !item.tamanho || !item.nomeCamisa) {
           toast.error(
-            "Preencha modelo, tamanho e nome da camisa para todos os uniformes."
+            "Preencha modelo, tamanho e nome da camisa para todos os uniformes.",
           );
           return;
         }
@@ -90,7 +133,7 @@ export default function CarrinhoPage() {
         if (jaTem) {
           if (!(item as any).numeroCamisaAtual) {
             toast.error(
-              "Informe o número que você já utiliza na camisa."
+              "Informe o número que você já utiliza na camisa.",
             );
             return;
           }
@@ -102,7 +145,7 @@ export default function CarrinhoPage() {
             !iAny.numeroOpcao3
           ) {
             toast.error(
-              "Informe pelo menos uma opção de número para a camisa (até 3 opções)."
+              "Informe pelo menos uma opção de número para a camisa (até 3 opções).",
             );
             return;
           }
@@ -113,13 +156,16 @@ export default function CarrinhoPage() {
     try {
       setLoading(true);
 
+      // telefone vai para o backend só com dígitos
+      const telefoneDigits = telefone.replace(/\D/g, "");
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nome,
-          email,
-          telefone,
+          nome: nome.trim(),
+          email: email.trim(),
+          telefone: telefoneDigits,
           items,
           metodoPagamento,
           parcelas,
@@ -333,7 +379,6 @@ export default function CarrinhoPage() {
                               onCheckedChange={(checked) =>
                                 updateItem(item.id, {
                                   jaTemCamisa: Boolean(checked),
-                                  // ao trocar, limpa campos de número
                                   numeroCamisaAtual: "",
                                   numeroOpcao1: "",
                                   numeroOpcao2: "",
@@ -365,7 +410,7 @@ export default function CarrinhoPage() {
                                   })
                                 }
                                 placeholder="10"
-                                className="bg-blue-950 border-blue-700 text-xs w-24"
+                                className="bg-blue-950 border-blue-700 text-xs w-24 text-center"
                               />
                               <p className="text-[10px] text-blue-300">
                                 Vamos tentar manter exatamente esse número
@@ -469,7 +514,10 @@ export default function CarrinhoPage() {
                   </Label>
                   <Input
                     value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
+                    onChange={(e) =>
+                      setTelefone(formatarTelefone(e.target.value))
+                    }
+                    placeholder="(83) 99999-9999"
                     className="mt-1 bg-blue-900/70 border-blue-700 text-xs"
                   />
                 </div>

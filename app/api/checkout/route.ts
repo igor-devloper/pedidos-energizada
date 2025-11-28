@@ -86,8 +86,7 @@ export async function POST(req: Request) {
         id: i.productId,
         title: i.label,
         quantity: i.quantity,
-        unit_price: 0,
-        // Number(i.unitPrice.toFixed(2))
+        unit_price: Number(i.unitPrice.toFixed(2)),
         currency_id: "BRL" as const,
       })),
       // item extra para repassar a taxa

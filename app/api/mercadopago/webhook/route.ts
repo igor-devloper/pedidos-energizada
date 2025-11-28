@@ -3,24 +3,20 @@ import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { prisma } from "@/lib/db";
 
-// 👉 MESMO TOKEN DO CHECKOUT
+export const runtime = "nodejs";
+
 const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!, // <--- aqui
+  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!,
 });
 
 const paymentClient = new Payment(mpClient);
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 type StatusInterno = "AGUARDANDO_PAGAMENTO" | "PAGO" | "CANCELADO";
 
 function mapMpStatusToInterno(status?: string): StatusInterno {
   const s = (status || "").toLowerCase();
-
   if (s === "approved") return "PAGO";
   if (s === "rejected" || s === "cancelled") return "CANCELADO";
-
   return "AGUARDANDO_PAGAMENTO";
 }
 
@@ -28,55 +24,75 @@ async function handleWebhook(req: Request) {
   try {
     const url = new URL(req.url);
 
-    // 🔎 tenta pegar o ID pela query
-    let paymentId: string | undefined =
-      url.searchParams.get("data.id") || url.searchParams.get("id") || undefined;
+    // 1) topic / type / action
+    const topic =
+      url.searchParams.get("topic") ||
+      url.searchParams.get("type") ||
+      url.searchParams.get("action") ||
+      undefined;
 
-    // 🔎 lê body cru pra não quebrar se vier vazio
-    let body: any = null;
-    try {
-      const raw = await req.text();
-      body = raw ? JSON.parse(raw) : null;
-    } catch {
-      body = null;
+    // 2) ID pela query
+    let paymentId =
+      url.searchParams.get("data.id") || url.searchParams.get("id") || "";
+
+    // 3) Se não veio na query, tenta corpo (JSON ou x-www-form-urlencoded)
+    if (!paymentId && req.method === "POST") {
+      const contentType = req.headers.get("content-type") || "";
+
+      let body: any = undefined;
+
+      if (contentType.includes("application/json")) {
+        body = await req.json().catch(() => undefined);
+      } else if (
+        contentType.includes("application/x-www-form-urlencoded") ||
+        contentType.includes("text/plain")
+      ) {
+        const text = await req.text().catch(() => "");
+        const params = new URLSearchParams(text);
+        body = Object.fromEntries(params.entries());
+      }
+
+      if (body?.data?.id) paymentId = String(body.data.id);
+      else if (body?.id) paymentId = String(body.id);
+      else if (body?.resourceId) paymentId = String(body.resourceId);
     }
 
-    // payload novo do MP: { action: "payment.updated", data: { id } }
-    if (!paymentId && body?.data?.id) {
-      paymentId = String(body.data.id);
-    }
-
-    // payloads mais antigos podem vir com "resource"
-    if (!paymentId && body?.resource) {
-      const parts = String(body.resource).split("/");
-      paymentId = parts[parts.length - 1];
-    }
-
-    if (!paymentId) {
-      console.log("[MP webhook] Notificação sem paymentId", {
-        query: url.searchParams.toString(),
-        body,
-      });
+    // 4) Se não for payment ou não tiver ID, ignora mas devolve 200
+    if (topic !== "payment" || !paymentId) {
+      console.log("[MP webhook] ignorado", { topic, paymentId });
       return NextResponse.json({ ok: true });
     }
 
-    console.log("[MP webhook] Recebido paymentId:", paymentId);
+    console.log("[MP webhook] recebida notificação payment", {
+      paymentId,
+      topic,
+      method: req.method,
+    });
 
-    // 👉 Busca detalhes do pagamento no Mercado Pago
-    const payment = (await paymentClient.get({
-      id: paymentId,
-    })) as any;
+    // 5) Busca o pagamento no MP
+    let payment: any;
+    try {
+      payment = await paymentClient.get({ id: paymentId });
+    } catch (e) {
+      console.error("[MP webhook] erro ao buscar payment", paymentId, e);
+      // responde 200 pro MP parar de tentar (não queremos loop infinito)
+      return NextResponse.json({ ok: true });
+    }
 
     const txid = payment.external_reference as string | undefined;
     const mpStatus = payment.status as string | undefined;
-    const amount = Number(payment.transaction_amount || 0);
+    const amount = Number(payment.transaction_amount ?? 0);
 
-    console.log("[MP webhook] payment.status =", mpStatus, "txid =", txid);
+    console.log("[MP webhook] payment recebido", {
+      id: paymentId,
+      txid,
+      mpStatus,
+      amount,
+    });
 
     if (!txid) {
       console.warn(
-        "[MP webhook] Pagamento sem external_reference (txid).",
-        payment
+        "[MP webhook] pagamento sem external_reference (txid), nada para atualizar."
       );
       return NextResponse.json({ ok: true });
     }
@@ -102,17 +118,18 @@ async function handleWebhook(req: Request) {
       );
     } catch (err) {
       console.warn(
-        "[MP webhook] Não encontrou PedidoCarrinho para txid",
+        "[MP webhook] não encontrou PedidoCarrinho para txid",
         txid,
         err
       );
     }
 
-    // Sempre 200 pro MP não ficar re-tentando
+    // Sempre 200 pro MP
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[/api/mercadopago/webhook] erro", err);
-    // Mesmo com erro, devolve 200 pra não ficar em loop
+    // Qualquer exceção que escaparia e viraria 502 cai aqui
+    console.error("[/api/mercadopago/webhook] erro inesperado", err);
+    // Mesmo com erro, responde 200 pra não gerar mais 502 no painel
     return NextResponse.json({ ok: false }, { status: 200 });
   }
 }

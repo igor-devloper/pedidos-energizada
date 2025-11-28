@@ -12,7 +12,7 @@ export const mpClient = new MercadoPagoConfig({
 
 export const paymentClient = new Payment(mpClient)
 
-export function verifyMercadoPagoSignature(request: Request) {
+export function verifyMercadoPagoSignature(request: Request, id: string) {
   const xSignature = request.headers.get("x-signature")
   const xRequestId = request.headers.get("x-request-id")
 

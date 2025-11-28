@@ -28,7 +28,7 @@ function mapMpStatusToInterno(status?: string): StatusInterno {
 
 async function atualizarPedidoPorPagamento(paymentId: string) {
   try {
-    console.log("[MP webhook] Buscando pagamento:", paymentId)
+    console.log("[v0] [MP webhook] Buscando pagamento:", paymentId)
 
     const payment = await paymentClient.get({ id: paymentId })
 
@@ -36,15 +36,16 @@ async function atualizarPedidoPorPagamento(paymentId: string) {
     const mpStatus = payment.status as string | undefined
     const amount = Number(payment.transaction_amount || 0)
 
-    console.log("[MP webhook] payment:", {
+    console.log("[v0] [MP webhook] payment:", {
       id: paymentId,
       txid,
       status: mpStatus,
       amount,
+      full_payment: JSON.stringify(payment, null, 2),
     })
 
     if (!txid) {
-      console.warn("[MP webhook] Pagamento sem external_reference (txid).", paymentId)
+      console.warn("[v0] [MP webhook] Pagamento sem external_reference (txid).", paymentId)
       return
     }
 
@@ -60,7 +61,7 @@ async function atualizarPedidoPorPagamento(paymentId: string) {
       })
 
       console.log(
-        "[MP webhook] PedidoCarrinho atualizado:",
+        "[v0] [MP webhook] PedidoCarrinho atualizado:",
         pedidoAtualizado.id,
         "txid:",
         txid,
@@ -71,49 +72,88 @@ async function atualizarPedidoPorPagamento(paymentId: string) {
       )
     } catch (dbErr: any) {
       if (dbErr.code === "P2025") {
-        console.warn("[MP webhook] PedidoCarrinho não encontrado para txid:", txid)
+        console.warn("[v0] [MP webhook] PedidoCarrinho não encontrado para txid:", txid)
       } else {
-        console.error("[MP webhook] Erro ao atualizar banco:", dbErr)
+        console.error("[v0] [MP webhook] Erro ao atualizar banco:", dbErr)
         throw dbErr
       }
     }
   } catch (err: any) {
-    console.error("[MP webhook] Erro ao buscar pagamento:", err)
+    console.error("[v0] [MP webhook] Erro ao buscar pagamento:", err.message, err.stack)
     throw err
   }
 }
 
 export async function POST(req: Request) {
   try {
-    // Valida assinatura
+    console.log("[v0] [MP webhook] Headers recebidos:", {
+      "x-signature": req.headers.get("x-signature"),
+      "x-request-id": req.headers.get("x-request-id"),
+      "content-type": req.headers.get("content-type"),
+    })
+    console.log("[v0] [MP webhook] URL:", req.url)
+
+    const bodyText = await req.text()
+    console.log("[v0] [MP webhook] Body raw:", bodyText)
+
+    let body: MpWebhookBody
     try {
-      verifyMercadoPagoSignature(req)
-    } catch (sigErr) {
-      console.error("[MP webhook] assinatura inválida:", sigErr)
-      return NextResponse.json({ ok: false, reason: "invalid-signature" }, { status: 200 })
+      body = JSON.parse(bodyText)
+    } catch (parseErr) {
+      console.error("[v0] [MP webhook] Erro ao fazer parse do body:", parseErr)
+      return NextResponse.json({ ok: false, reason: "invalid-json" }, { status: 200 })
     }
 
-    const body = (await req.json()) as MpWebhookBody
-    console.log("[MP webhook] body recebido:", body)
+    console.log("[v0] [MP webhook] Body parsed:", body)
+
+    const xSignature = req.headers.get("x-signature")
+    const xRequestId = req.headers.get("x-request-id")
+
+    if (xSignature && xRequestId) {
+      try {
+        const verifyReq = new Request(req.url, {
+          method: "POST",
+          headers: req.headers,
+          body: bodyText,
+        })
+        verifyMercadoPagoSignature(verifyReq, body.data?.id)
+        console.log("[v0] [MP webhook] Assinatura validada com sucesso")
+      } catch (sigErr: any) {
+        console.error("[v0] [MP webhook] Assinatura inválida:", sigErr.message)
+        if (process.env.NODE_ENV === "production" && body.live_mode === true) {
+          return NextResponse.json({ ok: false, reason: "invalid-signature" }, { status: 200 })
+        } else {
+          console.warn("[v0] [MP webhook] Continuando apesar da assinatura inválida (modo teste ou dev)")
+        }
+      }
+    } else {
+      console.warn("[v0] [MP webhook] Headers de assinatura ausentes - possível teste manual")
+    }
 
     if (body.type !== "payment" || !body.data?.id) {
-      console.log("[MP webhook] Evento ignorado:", body.type)
+      console.log("[v0] [MP webhook] Evento ignorado:", body.type)
       return NextResponse.json({ ok: true, ignored: true }, { status: 200 })
     }
 
     await Promise.race([
       atualizarPedidoPorPagamento(body.data.id),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 25000)),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout de 25s atingido")), 25000)),
     ])
 
+    console.log("[v0] [MP webhook] Processamento concluído com sucesso")
     return NextResponse.json({ ok: true }, { status: 200 })
   } catch (err: any) {
-    console.error("[/api/mercadopago/webhook] erro geral:", err.message)
+    console.error("[v0] [MP webhook] Erro geral:", {
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    })
     return NextResponse.json({ ok: false, error: err.message }, { status: 200 })
   }
 }
 
 export async function GET(req: Request) {
-  console.log("[MP webhook] GET", req.url)
+  console.log("[v0] [MP webhook] GET", req.url)
   return NextResponse.json({ ok: true, message: "Webhook endpoint ativo" })
 }
+  

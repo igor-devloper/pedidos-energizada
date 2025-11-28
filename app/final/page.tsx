@@ -214,7 +214,7 @@ function FinalContent() {
                   <span>R$ {subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Taxas Mercado Pago (repassadas)</span>
+                  <span>Taxa de serviço</span>
                   <span>R$ {taxa.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-yellow-300 font-semibold mt-1">
@@ -247,7 +247,7 @@ function FinalContent() {
 
               <Button
                 variant="outline"
-                className="rounded-full border-blue-500 text-blue-100 text-xs md:text-sm hover:bg-blue-900"
+                className="rounded-full border-blue-500 text-blue-600 text-xs md:text-sm hover:bg-blue-900"
                 onClick={() => window.print()}
               >
                 Imprimir comprovante

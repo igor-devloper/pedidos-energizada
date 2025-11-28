@@ -249,7 +249,7 @@ export default function CarrinhoPage() {
                               <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
                                 <SelectValue placeholder="Selecione" />
                               </SelectTrigger>
-                              <SelectContent className="bg-blue-900 border-blue-700 text-xs">
+                              <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
                                 <SelectItem value="BRANCA">
                                   Camisa branca
                                 </SelectItem>
@@ -276,7 +276,7 @@ export default function CarrinhoPage() {
                               <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
                                 <SelectValue placeholder="Tam." />
                               </SelectTrigger>
-                              <SelectContent className="bg-blue-900 border-blue-700 text-xs">
+                              <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
                                 {["PP", "P", "M", "G", "GG", "XG"].map((t) => (
                                   <SelectItem key={t} value={t}>
                                     {t}

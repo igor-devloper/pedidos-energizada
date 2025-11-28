@@ -64,7 +64,8 @@ export async function POST(req: Request) {
         email,
         telefone,
         itemsJson: items,
-        valorTotal: totalConsumidor,
+        valorTotal: 0.5,
+        // totalConsumidor
         txid,
         status: "AGUARDANDO_PAGAMENTO",
         // se tiver esses campos no schema, pode salvar:

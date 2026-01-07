@@ -2,6 +2,7 @@
 
 // Métodos que você quer controlar
 export type MetodoPagamento =
+
   | "pix"
   | "credito"
   | "saldo_mp"

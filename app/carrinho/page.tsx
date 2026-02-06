@@ -4,9 +4,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, ShoppingCart, Trash2 } from "lucide-react";
+import { Loader2, RulerDimensionLine, ShoppingCart, Trash2 } from "lucide-react";
 import { z } from "zod";
-
+import Image from "next/image";
 import { useCart } from "@/components/cart-provider";
 import {
   Card,
@@ -33,15 +33,17 @@ import {
   type MetodoPagamento,
   type Parcelas,
 } from "@/lib/calc-tax";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { DialogTrigger } from "@radix-ui/react-dialog";
 
 const modeloLabel = (m?: Modelo) =>
   m === "BRANCA"
     ? "Camisa branca"
     : m === "AZUL"
-    ? "Camisa azul"
-    : m === "AZUL_SEM_MANGA"
-    ? "Camisa azul s/ manga"
-    : "-";
+      ? "Camisa azul"
+      : m === "AZUL_SEM_MANGA"
+        ? "Camisa azul s/ manga"
+        : "-";
 
 /* --------- validação Zod --------- */
 const compradorSchema = z.object({
@@ -250,8 +252,8 @@ export default function CarrinhoPage() {
                             {(item as any).tipoProduto === "CANECA"
                               ? "Caneca 850 mL"
                               : (item as any).tipoProduto === "TIRANTE"
-                              ? "Tirante"
-                              : "Kit Caneca + Tirante"}
+                                ? "Tirante"
+                                : "Kit Caneca + Tirante"}
                           </p>
                         )}
                       </div>
@@ -330,23 +332,46 @@ export default function CarrinhoPage() {
                             <Label className="text-[11px] text-blue-200">
                               Tamanho
                             </Label>
-                            <Select
-                              value={item.tamanho}
-                              onValueChange={(v) =>
-                                updateItem(item.id, { tamanho: v as Tamanho })
-                              }
-                            >
-                              <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
-                                <SelectValue placeholder="Tam." />
-                              </SelectTrigger>
-                              <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
-                                {["PP", "P", "M", "G", "GG", "XG"].map((t) => (
-                                  <SelectItem key={t} value={t}>
-                                    {t}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-4">
+                              <Select
+                                value={item.tamanho}
+                                onValueChange={(v) =>
+                                  updateItem(item.id, { tamanho: v as Tamanho })
+                                }
+                              >
+                                <SelectTrigger className="bg-blue-950 border-blue-700 text-xs">
+                                  <SelectValue placeholder="Tam." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-blue-900 border-blue-700 text-xs text-white">
+                                  {["PP", "P", "M", "G", "GG", "XG"].map((t) => (
+                                    <SelectItem key={t} value={t}>
+                                      {t}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Dialog>
+                                <DialogTrigger className="">
+                                  <Button className="bg-blue-950 border-blue-700 text-xs font-normal">
+                                    <RulerDimensionLine size={16} />
+                                    <p>Tabela de tamanhos</p>
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="bg-blue-950 border-blue-700">
+                                  <DialogTitle className="text-blue-200">Tabela de tamanhos</DialogTitle>
+
+                                  <div className="rounded-4xl overflow-hidden justify-center flex w-auto max-w-2xl max-h-screen">
+                                    <Image
+                                      src="/tabelaTam.png"
+                                      alt="Tabela de tamanhos"
+                                      width={300}
+                                      height={300}
+                                      className="w-full"
+                                    />
+                                  </div>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
                           </div>
 
                           <div className="space-y-1">

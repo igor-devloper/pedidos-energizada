@@ -13,6 +13,8 @@ import {
 import { ShoppingBag, Shirt, Tag, Wine, ShoppingCart } from "lucide-react";
 import { useCart } from "@/components/cart-provider";
 import type { NewCartItem } from "@/lib/cart-types";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type Produto = {
   id: "KIT_UNIFORME" | "CAMISA" | "CANECA" | "TIRANTE" | "KIT_CANECA";
@@ -93,6 +95,7 @@ export default function ProdutosPage() {
         numeroCamisa: undefined,
       };
       addItem(item);
+      toast.success("Produto adicionado ao carrinho")
     } else {
       const tipoProduto =
         produto.id === "CANECA"
@@ -245,13 +248,12 @@ function ProductCard({
             {produto.detalhe}
           </p>
 
-          <button
-            type="button"
+          <Button
             onClick={onAdd}
-            className="mt-1 w-full rounded-full bg-yellow-400 text-blue-900 text-xs font-bold py-2 hover:bg-yellow-500"
+            className="mt-1 cursor-pointer w-full rounded-full bg-yellow-400 text-blue-900 text-xs font-bold py-2 hover:bg-yellow-500"
           >
             Adicionar ao carrinho
-          </button>
+          </Button>
         </CardContent>
       </Card>
     </div>

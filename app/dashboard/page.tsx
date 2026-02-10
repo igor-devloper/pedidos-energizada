@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { Eye, RefreshCw, Search, Shirt, Wallet, BarChart3, PieChartIcon, Package } from "lucide-react"
+import { Eye, RefreshCw, Search, Shirt, Wallet, BarChart3, PieChartIcon, Package, Download } from "lucide-react"
 
 import { PieChart, Pie, Cell, Label, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from "recharts"
 
@@ -107,6 +107,7 @@ export default function AdminPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<"TODOS" | StatusInterno | "PAGO_METADE">("TODOS")
   const [selected, setSelected] = useState<PedidoCarrinho | null>(null)
+  const [exportando, setExportando] = useState(false)
 
   const fetchPedidos = async () => {
     setLoading(true)
@@ -152,6 +153,53 @@ export default function AdminPage() {
         )
       })
   }, [pedidos, search, statusFilter])
+
+  // ======= exportar para Excel =======
+  const exportarExcel = async () => {
+    if (filtrados.length === 0) {
+      toast.error("Nenhum pedido para exportar")
+      return
+    }
+
+    setExportando(true)
+    try {
+      const res = await fetch("/api/exportar-pedidos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pedidos: filtrados.map(p => ({
+            id: p.id,
+            txid: p.txid,
+            nome: p.nome,
+            email: p.email,
+            telefone: p.telefone,
+            status: p.status,
+            createdAt: p.createdAt,
+            itemsJson: p.itemsJson,
+          })),
+        }),
+      })
+
+      if (!res.ok) throw new Error("Erro ao exportar")
+
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `pedidos-energizada-${new Date().toISOString().split("T")[0]}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+
+      toast.success("Planilha exportada com sucesso!")
+    } catch (err) {
+      console.error(err)
+      toast.error("Erro ao exportar planilha")
+    } finally {
+      setExportando(false)
+    }
+  }
 
   // ======= métricas gerais =======
   const {
@@ -338,14 +386,26 @@ export default function AdminPage() {
             <p className="text-sm text-slate-400">Pedidos gerais pagos via Mercado Pago (carrinho).</p>
           </div>
 
-          <Button
-            variant="outline"
-            onClick={fetchPedidos}
-            className="border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Atualizar
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={exportarExcel}
+              disabled={exportando || filtrados.length === 0}
+              className="border-emerald-700 bg-emerald-900/60 text-emerald-100 hover:bg-emerald-800"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              {exportando ? "Exportando..." : "Exportar Excel"}
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={fetchPedidos}
+              className="border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Atualizar
+            </Button>
+          </div>
         </div>
 
         {/* KPIs */}

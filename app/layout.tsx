@@ -1,15 +1,15 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import "./globals.css";
-import { Mulish } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import { Toaster } from "sonner";
 import { Analytics } from "@vercel/analytics/next";
 import { CartProvider } from "@/components/cart-provider";
 
-const mulish = Mulish({
+const montserrat = Montserrat({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-mulish",
+  variable: "--font-montserrat",
 });
 
 export const metadata: Metadata = {
@@ -23,13 +23,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" className={mulish.variable}>
+    <html lang="pt-BR" className={montserrat.variable}>
       <body
         className="
           antialiased
           text-slate-900
           font-sans
-          [--font-sans:var(--font-mulish)]
+          [--font-sans:var(--font-montserrat)]
         "
       >
         <CartProvider>{children}</CartProvider>

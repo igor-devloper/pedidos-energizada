@@ -377,21 +377,21 @@ export default function AdminPage() {
   )
 
   return (
-    <main className="min-h-screen bg-[#020817] px-4 py-8">
+    <main className="min-h-screen bg-slate-50 px-3 py-5 font-sans text-slate-900 sm:px-5 sm:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         {/* TÍTULO */}
         <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-50">Painel de Pedidos — Energizada</h1>
-            <p className="text-sm text-slate-400">Pedidos gerais pagos via Mercado Pago (carrinho).</p>
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950">Painel de Pedidos — Energizada</h1>
+            <p className="text-sm text-slate-500">Pedidos gerais pagos via Mercado Pago (carrinho).</p>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex w-full gap-2 sm:w-auto">
             <Button
               variant="outline"
               onClick={exportarExcel}
               disabled={exportando || filtrados.length === 0}
-              className="border-emerald-700 bg-emerald-900/60 text-emerald-100 hover:bg-emerald-800"
+              className="flex-1 border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 sm:flex-none"
             >
               <Download className="mr-2 h-4 w-4" />
               {exportando ? "Exportando..." : "Exportar Excel"}
@@ -400,7 +400,7 @@ export default function AdminPage() {
             <Button
               variant="outline"
               onClick={fetchPedidos}
-              className="border-slate-700 bg-slate-900/60 text-slate-100 hover:bg-slate-800"
+              className="flex-1 border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 sm:flex-none"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Atualizar
@@ -409,74 +409,74 @@ export default function AdminPage() {
         </div>
 
         {/* KPIs */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
+              <CardTitle className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                 <Package className="h-4 w-4 text-yellow-400" />
                 Total de pedidos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-slate-50">{totalPedidos}</p>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-2xl font-semibold text-slate-950">{totalPedidos}</p>
+              <p className="text-[11px] text-slate-500">
                 {totalPago} pagos • {totalAguardando} aguardando
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
+          <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
+              <CardTitle className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                 <Shirt className="h-4 w-4 text-yellow-400" />
                 Produtos vendidos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-100">Uniformes (kits + camisas) e canecas/tirantes combinados.</p>
-              <p className="text-[11px] text-slate-400 mt-1">Veja a distribuição no gráfico de barras.</p>
+              <p className="text-sm text-slate-700">Uniformes (kits + camisas) e canecas/tirantes combinados.</p>
+              <p className="text-[11px] text-slate-500 mt-1">Veja a distribuição no gráfico de barras.</p>
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-800 bg-gradient-to-br from-emerald-950 to-slate-900 text-slate-50 shadow-md">
+          <Card className="rounded-2xl border-emerald-100 bg-emerald-50 text-slate-900 shadow-sm">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-emerald-300 flex items-center gap-1">
+              <CardTitle className="text-xs font-medium text-emerald-700 flex items-center gap-1">
                 <Wallet className="h-4 w-4 text-emerald-400" />
-                Valor líquido (sem taxa MP)
+                Valor dos produtos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-semibold text-emerald-300">{currency(valorLiquidoRecebido)}</p>
-              <p className="text-[11px] text-slate-400">De {currency(valorLiquido)} total em produtos</p>
-              <p className="text-[10px] text-emerald-400/70 mt-1">Este é o valor real que você tem (sem taxas)</p>
+              <p className="text-2xl font-semibold text-emerald-700">{currency(valorLiquidoRecebido)}</p>
+              <p className="text-[11px] text-slate-500">De {currency(valorLiquido)} total em produtos</p>
+              <p className="text-[10px] text-emerald-600 mt-1">Total dos produtos em pedidos pagos</p>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
+          <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm">
             <CardHeader className="pb-1">
-              <CardTitle className="text-xs font-medium text-slate-300 flex items-center gap-1">
+              <CardTitle className="text-xs font-semibold text-slate-500 flex items-center gap-1">
                 <BarChart3 className="h-4 w-4 text-yellow-400" />
                 Recebido x a receber (bruto)
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-slate-100">
-                Recebido: <span className="font-semibold text-emerald-300">{currency(valorRecebido)}</span>
+              <p className="text-sm text-slate-700">
+                Recebido: <span className="font-semibold text-emerald-700">{currency(valorRecebido)}</span>
               </p>
-              <p className="text-sm text-slate-100">
-                A receber: <span className="font-semibold text-amber-300">{currency(valorAReceber)}</span>
+              <p className="text-sm text-slate-700">
+                A receber: <span className="font-semibold text-amber-600">{currency(valorAReceber)}</span>
               </p>
-              <p className="text-[10px] text-slate-500 mt-1">Valores incluem taxa do Mercado Pago</p>
+              <p className="text-[10px] text-slate-500 mt-1">Valores incluem a taxa de serviço cobrada no checkout</p>
             </CardContent>
           </Card>
         </div>
 
         {/* GRÁFICOS */}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {/* Pizza por status */}
-          <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
+          <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
+              <CardTitle className="text-xs font-medium text-slate-700 flex items-center gap-1">
                 <PieChartIcon className="h-4 w-4 text-yellow-400" />
                 Distribuição por status
               </CardTitle>
@@ -494,7 +494,7 @@ export default function AdminPage() {
                       content={
                         <ChartTooltipContent
                           hideLabel
-                          className="bg-slate-900/95 border-slate-700 text-slate-50 shadow-xl"
+                          className="bg-white border-slate-200 text-slate-900 shadow-xl"
                         />
                       }
                     />
@@ -516,10 +516,10 @@ export default function AdminPage() {
 
                           return (
                             <text x={viewBox.cx} y={viewBox.cy} textAnchor="middle" dominantBaseline="middle">
-                              <tspan x={viewBox.cx} y={viewBox.cy} className="fill-slate-50 text-2xl font-bold">
+                              <tspan x={viewBox.cx} y={viewBox.cy} className="fill-slate-900 text-2xl font-bold">
                                 {totalPedidos}
                               </tspan>
-                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 18} className="fill-slate-400 text-xs">
+                              <tspan x={viewBox.cx} y={(viewBox.cy || 0) + 18} className="fill-slate-500 text-xs">
                                 pedidos
                               </tspan>
                             </text>
@@ -534,9 +534,9 @@ export default function AdminPage() {
           </Card>
 
           {/* barras por tipo de produto */}
-          <Card className="border-blue-900 bg-[#050816] text-slate-50 shadow-md overflow-hidden">
+          <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm overflow-hidden">
             <CardHeader className="pb-2">
-              <CardTitle className="text-xs font-medium text-slate-100 flex items-center gap-1">
+              <CardTitle className="text-xs font-medium text-slate-700 flex items-center gap-1">
                 <BarChart3 className="h-4 w-4 text-yellow-400" />
                 Quantidade por tipo de produto
               </CardTitle>
@@ -549,22 +549,22 @@ export default function AdminPage() {
               ) : (
                 <ChartContainer config={produtoChartConfig} className="h-64 w-full">
                   <BarChart data={barProdutoData} margin={{ top: 24, left: 16, right: 16, bottom: 8 }}>
-                    <CartesianGrid vertical={false} stroke="#111827" />
+                    <CartesianGrid vertical={false} stroke="#e2e8f0" />
                     <XAxis
                       dataKey="label"
                       tickLine={false}
                       axisLine={false}
                       tickMargin={10}
-                      stroke="#9ca3af"
+                      stroke="#64748b"
                       fontSize={11}
                     />
-                    <YAxis stroke="#6b7280" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} allowDecimals={false} />
                     <ChartTooltip
                       cursor={false}
                       content={
                         <ChartTooltipContent
                           hideLabel
-                          className="bg-slate-900/95 border-slate-700 text-slate-100 shadow-xl"
+                          className="bg-slate-900/95 border-slate-700 text-slate-700 shadow-xl"
                         />
                       }
                     />
@@ -572,7 +572,7 @@ export default function AdminPage() {
                       {barProdutoData.map((entry) => (
                         <Cell key={entry.key} fill={entry.fill} />
                       ))}
-                      <LabelList dataKey="quantidade" position="top" className="fill-slate-100 text-xs" />
+                      <LabelList dataKey="quantidade" position="top" className="fill-slate-700 text-xs" />
                     </Bar>
                   </BarChart>
                 </ChartContainer>
@@ -582,13 +582,13 @@ export default function AdminPage() {
         </div>
 
         {/* FILTROS */}
-        <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
+        <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm">
           <CardContent className="flex flex-col gap-3 py-4 md:flex-row md:items-center md:justify-between">
             <div className="relative w-full md:max-w-sm">
               <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Buscar por nome, telefone, e-mail ou TXID"
-                className="pl-8 border-slate-700 bg-slate-950 text-slate-50 placeholder:text-slate-500 focus-visible:ring-sky-500"
+                className="pl-9 border-slate-200 bg-white text-slate-900 placeholder:text-slate-400 focus-visible:ring-blue-500"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -609,8 +609,8 @@ export default function AdminPage() {
                   variant={statusFilter === opt.id ? "default" : "outline"}
                   className={
                     statusFilter === opt.id
-                      ? "bg-sky-500 text-slate-900 hover:bg-sky-400 border-sky-400"
-                      : "border-slate-700 text-slate-900 hover:bg-slate-800"
+                      ? "bg-blue-600 text-white hover:bg-blue-700 border-blue-600"
+                      : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                   }
                   onClick={() => setStatusFilter(opt.id as typeof statusFilter)}
                 >
@@ -622,13 +622,13 @@ export default function AdminPage() {
         </Card>
 
         {/* TABELA */}
-        <Card className="border-slate-800 bg-slate-900 text-slate-50 shadow-md">
+        <Card className="rounded-2xl border-slate-200 bg-white text-slate-900 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-slate-50">Pedidos (carrinho + Mercado Pago)</CardTitle>
+            <CardTitle className="text-slate-950">Pedidos</CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-slate-800 text-xs text-slate-400">
+            <table className="min-w-[920px] w-full text-sm">
+              <thead className="border-b border-slate-800 text-xs text-slate-500">
                 <tr>
                   <th className="py-2 pr-4 text-left">Data</th>
                   <th className="py-2 pr-4 text-left">Cliente</th>
@@ -685,8 +685,8 @@ export default function AdminPage() {
                     }
 
                     return (
-                      <tr key={p.id} className="border-b border-slate-800 last:border-0">
-                        <td className="py-3 pr-4 text-xs text-slate-400">
+                      <tr key={p.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/80">
+                        <td className="py-3 pr-4 text-xs text-slate-500">
                           {new Date(p.createdAt).toLocaleString("pt-BR", {
                             day: "2-digit",
                             month: "2-digit",
@@ -696,22 +696,22 @@ export default function AdminPage() {
                           })}
                         </td>
                         <td className="py-3 pr-4">
-                          <div className="font-medium text-slate-50">{p.nome}</div>
+                          <div className="font-semibold text-slate-900">{p.nome}</div>
                           <div className="text-[10px] text-slate-500">TXID {p.txid}</div>
                         </td>
-                        <td className="py-3 pr-4 text-xs text-slate-100">{resumo}</td>
+                        <td className="py-3 pr-4 text-xs text-slate-700">{resumo}</td>
                         <td className="py-3 pr-4">
                           <StatusBadge status={p.status} />
                         </td>
-                        <td className="py-3 pr-4 text-right font-medium text-sky-400">{currency(vTotal)}</td>
-                        <td className="py-3 pr-4 text-right font-medium text-sky-400">
+                        <td className="py-3 pr-4 text-right font-semibold text-slate-900">{currency(vTotal)}</td>
+                        <td className="py-3 pr-4 text-right font-semibold text-slate-900">
                           {currency(valorLiquidoPedido)}
                         </td>
                         <td className="py-3 pl-4 text-right">
                           <Button
                             size="icon"
                             variant="ghost"
-                            className="h-8 w-8 text-sky-400 hover:bg-slate-800"
+                            className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                             title="Ver detalhes"
                             onClick={() => setSelected(p)}
                           >
@@ -729,9 +729,9 @@ export default function AdminPage() {
 
         {/* DIALOG DETALHES */}
         <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-          <DialogContent className="w-full max-w-lg max-h-[80vh] overflow-y-auto border-slate-800 bg-slate-900 text-slate-50">
+          <DialogContent className="w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto border-slate-200 bg-white text-slate-900">
             <DialogHeader>
-              <DialogTitle className="text-slate-50">Detalhes do pedido</DialogTitle>
+              <DialogTitle className="text-slate-950">Detalhes do pedido</DialogTitle>
             </DialogHeader>
 
             {selected && (
@@ -772,14 +772,14 @@ export default function AdminPage() {
                   )}
                 </div>
 
-                <Separator className="bg-slate-800" />
+                <Separator className="bg-slate-200" />
 
                 <div className="space-y-2">
                   <p className="font-semibold">Itens do carrinho</p>
                   <div className="space-y-1 text-xs">
                     {Array.isArray(selected.itemsJson) &&
                       (selected.itemsJson as ItemCarrinho[]).map((i, idx) => (
-                        <div key={idx} className="rounded-md border border-slate-800 bg-slate-950 px-2 py-1">
+                        <div key={idx} className="rounded-md border border-slate-200 bg-slate-50 px-2 py-1">
                           <div className="font-semibold">
                             {i.quantity || 1}x {i.label}
                           </div>
@@ -788,7 +788,7 @@ export default function AdminPage() {
                             {currency((i.unitPrice || 0) * (i.quantity || 1))}
                           </div>
                           {i.kind === "UNIFORME" && (
-                            <div className="mt-1 text-[11px] text-slate-300">
+                            <div className="mt-1 text-[11px] text-slate-600">
                               {i.tipoPedido === "KIT" ? "Kit uniforme" : "Camisa"}
                               {i.modelo && ` • Modelo: ${i.modelo}`}
                               {i.tamanho && ` • Tam: ${i.tamanho}`}
@@ -796,7 +796,7 @@ export default function AdminPage() {
                             </div>
                           )}
                           {i.kind === "CANECA" && (
-                            <div className="mt-1 text-[11px] text-slate-300">
+                            <div className="mt-1 text-[11px] text-slate-600">
                               {i.tipoProduto === "CANECA"
                                 ? "Caneca 850 mL"
                                 : i.tipoProduto === "TIRANTE"

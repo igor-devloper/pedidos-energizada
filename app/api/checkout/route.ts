@@ -1,7 +1,6 @@
 // app/api/checkout/route.ts
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { MercadoPagoConfig, Preference } from "mercadopago";
 
 import { prisma } from "@/lib/db";
 import { CartItem } from "@/lib/cart-types";
@@ -10,10 +9,6 @@ import {
   type MetodoPagamento,
   type Parcelas,
 } from "@/lib/calc-tax";
-
-const mpClient = new MercadoPagoConfig({
-  accessToken: process.env.MERCADO_PAGO_ACCESS_TOKEN!,
-});
 
 function generateTxId() {
   return crypto.randomBytes(10).toString("hex");
@@ -157,53 +152,16 @@ export async function POST(req: Request) {
       } as any,
     });
 
-    // ===== 5) Criar preferência no Mercado Pago =====
-    const preference = new Preference(mpClient);
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL!;
-
-    const mpItems = [
-      ...itensProcessados.map((i) => ({
-        id: i.productId,
-        title: i.label,
-        quantity: i.quantity,
-        unit_price: Number(i.unitPrice.toFixed(2)),
-        currency_id: "BRL" as const,
-      })),
-      ...(taxaTotal > 0
-        ? [
-            {
-              id: "TAXA_SERVICO",
-              title: "Taxa de serviço",
-              quantity: 1,
-              unit_price: Number(taxaTotal.toFixed(2)),
-              currency_id: "BRL" as const,
-            },
-          ]
-        : []),
-    ];
-
-    const pref = await preference.create({
-      body: {
-        items: mpItems,
-        payer: {
-          name: nome,
-          email,
-        },
-        external_reference: pedido.txid,
-        back_urls: {
-          success: `${APP_URL}/final?status=success&txid=${pedido.txid}`,
-          failure: `${APP_URL}/final?status=failure&txid=${pedido.txid}`,
-          pending: `${APP_URL}/final?status=pending&txid=${pedido.txid}`,
-        },
-        notification_url: `${APP_URL}/api/mercadopago/webhook`,
-        auto_return: "approved",
-      },
-    });
-
+    // ===== 5) Checkout transparente =====
+    // O pagamento acontece na página interna /pagamento/[txid].
+    // O valor cobrado é sempre o valorTotal persistido no banco.
     return NextResponse.json({
-      initPoint: pref.init_point,
-      preferenceId: pref.id,
       txid: pedido.txid,
+      paymentUrl: `/pagamento/${pedido.txid}`,
+      subtotal: valorBase,
+      taxaServico: taxaTotal,
+      taxaPercentual,
+      total: totalConsumidor,
     });
   } catch (err) {
     console.error("[POST /api/checkout]", err);

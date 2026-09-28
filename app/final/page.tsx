@@ -1,270 +1,122 @@
-// app/final/page.tsx
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle2, Clock3, Loader2, ShoppingBag, XCircle, Printer, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, XCircle, Clock } from "lucide-react";
-
 import type { CartItem } from "@/lib/cart-types";
-
-type StatusInterno = "AGUARDANDO_PAGAMENTO" | "PAGO" | "PAGO_METADE" | "CANCELADO";
 
 type PedidoCarrinho = {
   txid: string;
   nome: string;
-  valorTotal: number;
-  status: StatusInterno;
+  email?: string;
+  telefone?: string;
+  valorTotal: number | string;
+  valorPago?: number | string | null;
+  status: string;
   itemsJson: CartItem[];
 };
 
+const money = (value: number) => value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
 function FinalContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const txid = (searchParams.get("txid") || "").trim();
-  const statusQuery = (searchParams.get("status") || "").toLowerCase(); // success/failure/pending
-
+  const params = useSearchParams();
+  const txid = (params.get("txid") || "").trim();
   const [pedido, setPedido] = useState<PedidoCarrinho | null>(null);
   const [loading, setLoading] = useState(true);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erro, setErro] = useState("");
 
   useEffect(() => {
-    if (!txid) {
-      setErro("TXID não informado.");
-      setLoading(false);
-      return;
-    }
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/pedidos-carrinho/${txid}`, {
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("Pedido não encontrado.");
-        }
-
-        const data = await res.json();
-        setPedido(data);
-      } catch (e: any) {
-        console.error(e);
-        setErro(e.message || "Erro ao carregar pedido.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
+    if (!txid) { setErro("Pedido não informado."); setLoading(false); return; }
+    fetch(`/api/pedidos-carrinho/${txid}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Pedido não encontrado.");
+        return res.json();
+      })
+      .then(setPedido)
+      .catch((e) => setErro(e.message || "Não foi possível carregar o pedido."))
+      .finally(() => setLoading(false));
   }, [txid]);
 
-  // subtotal = soma dos itens (sem taxas)
   const subtotal = useMemo(() => {
-    if (!pedido?.itemsJson) return 0;
-    return pedido.itemsJson.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0
-    );
+    const itens = Array.isArray(pedido?.itemsJson) ? pedido!.itemsJson : [];
+    return itens.reduce((sum, item) => sum + Number(item.unitPrice || 0) * Number(item.quantity || 0), 0);
   }, [pedido]);
 
-  const taxa = useMemo(() => {
-    if (!pedido) return 0;
-    const diff = pedido.valorTotal - subtotal;
-    return diff > 0 ? diff : 0;
-  }, [pedido, subtotal]);
+  const total = Number(pedido?.valorTotal || 0);
+  const taxa = Math.max(0, total - subtotal);
+  const pago = pedido?.status === "PAGO" || pedido?.status === "PAGO_METADE";
+  const cancelado = pedido?.status === "CANCELADO";
 
-  const statusLabel = useMemo(() => {
-    if (!pedido) return "";
-    if (pedido.status === "PAGO" || pedido.status === "PAGO_METADE") {
-      return "Pagamento aprovado (aguarde a confirmação pela Atlética).";
-    }
-    if (pedido.status === "CANCELADO") {
-      return "Pagamento não aprovado ou cancelado. Você pode tentar novamente.";
-    }
-    // aguardando_pagamento
-    if (statusQuery === "pending") {
-      return "Pagamento em processamento. Assim que o Mercado Pago confirmar, seu pedido será atualizado.";
-    }
-    return "Estamos aguardando a confirmação do pagamento pelo Mercado Pago.";
-  }, [pedido, statusQuery]);
+  if (loading) return <main className="grid min-h-screen place-items-center bg-[#f6f7fb]"><Loader2 className="h-7 w-7 animate-spin text-blue-800" /></main>;
 
-  const statusIcon = useMemo(() => {
-    if (!pedido) return null;
-    if (pedido.status === "PAGO" || pedido.status === "PAGO_METADE") {
-      return (
-        <CheckCircle2 className="h-5 w-5 text-green-400 inline-block mr-2" />
-      );
-    }
-    if (pedido.status === "CANCELADO") {
-      return <XCircle className="h-5 w-5 text-red-400 inline-block mr-2" />;
-    }
-    return <Clock className="h-5 w-5 text-yellow-300 inline-block mr-2" />;
-  }, [pedido]);
-
-  // telas de loading/erro
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 flex items-center justify-center px-4">
-        <Card className="bg-blue-900/80 border-blue-700 px-8 py-6 shadow-xl text-white">
-          <CardContent className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-yellow-400" />
-            <p>Carregando resumo do pedido…</p>
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
-
-  if (erro || !pedido) {
-    return (
-      <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 flex items-center justify-center px-4">
-        <Card className="bg-red-900/40 border-red-500 px-8 py-6 shadow-xl text-white max-w-lg">
-          <CardContent className="space-y-4">
-            <p>{erro || "Pedido não encontrado."}</p>
-            <Button
-              variant="outline"
-              onClick={() => router.push("/")}
-              className="border-yellow-400 text-yellow-300 hover:bg-yellow-400 hover:text-blue-900"
-            >
-              Voltar para a loja
-            </Button>
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
+  if (erro || !pedido) return (
+    <main className="grid min-h-screen place-items-center bg-[#f6f7fb] px-4">
+      <div className="w-full max-w-md rounded-3xl border border-red-100 bg-white p-7 text-center shadow-sm">
+        <XCircle className="mx-auto h-10 w-10 text-red-500" />
+        <h1 className="mt-4 text-xl font-extrabold text-slate-950">Não encontramos o pedido</h1>
+        <p className="mt-2 text-sm text-slate-500">{erro || "Confira o link e tente novamente."}</p>
+        <Button onClick={() => router.push("/")} className="mt-6 w-full bg-blue-800 hover:bg-blue-900">Voltar para a loja</Button>
+      </div>
+    </main>
+  );
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-yellow-300 via-blue-800 to-blue-950 px-4 py-10">
-      <div className="mx-auto max-w-4xl">
-        {/* header com logo */}
-        <div className="flex flex-col items-center gap-4 mb-8">
-          <div className="relative h-20 w-64 md:h-24 md:w-80">
-            <Image
-              src="/energizada-logo.png"
-              alt="Atlética Energizada"
-              fill
-              className="object-contain drop-shadow-[0_0_18px_rgba(0,0,0,0.6)]"
-              priority
-            />
+    <main className="min-h-screen bg-[#f6f7fb] px-4 py-6 md:py-10">
+      <div className="mx-auto max-w-3xl">
+        <header className="mb-8 flex items-center justify-between gap-4">
+          <button onClick={() => router.push("/")} className="flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-blue-900"><ArrowLeft className="h-4 w-4" /> Loja</button>
+          <Image src="/energizada-logo.png" alt="Energizada" width={150} height={56} className="h-12 w-auto object-contain" />
+          <div className="w-12" />
+        </header>
+
+        <section className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
+          <div className="p-6 text-center md:p-9">
+            {pago ? <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" /> : cancelado ? <XCircle className="mx-auto h-14 w-14 text-red-500" /> : <Clock3 className="mx-auto h-14 w-14 text-amber-500" />}
+            <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-blue-700">Pedido #{pedido.txid.slice(0, 8).toUpperCase()}</p>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-slate-950 md:text-3xl">
+              {pago ? "Pagamento confirmado!" : cancelado ? "Pagamento não aprovado" : "Pagamento aguardando confirmação"}
+            </h1>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
+              {pago
+                ? `Tudo certo, ${pedido.nome}. Seu pagamento foi confirmado e o pedido está registrado.`
+                : cancelado
+                  ? "O pagamento não foi concluído. Você pode voltar ao pedido e realizar uma nova tentativa."
+                  : "Seu pedido existe, mas o pagamento ainda não foi confirmado. Pix e boleto podem levar algum tempo para atualizar após o pagamento."}
+            </p>
           </div>
-          <h1 className="text-2xl md:text-3xl font-extrabold text-blue-950 drop-shadow-sm text-center">
-            Resumo do pedido ⚡
-          </h1>
-        </div>
 
-        {/* card principal */}
-        <Card className="bg-blue-950/90 border-blue-800 text-white shadow-2xl rounded-3xl">
-          <CardHeader className="border-b border-blue-800 pb-3">
-            <CardTitle className="text-base md:text-lg text-yellow-300">
-              Pedido #{pedido.txid.slice(0, 8).toUpperCase()}
-            </CardTitle>
-          </CardHeader>
-
-          <CardContent className="p-6 space-y-6">
-            {/* dados principais */}
-            <section className="space-y-1 text-sm md:text-base">
-              <p>
-                <span className="font-semibold text-blue-100">Cliente: </span>
-                <span className="text-yellow-200">{pedido.nome}</span>
-              </p>
-              <p className="text-xs text-blue-300">
-                TXID completo: <span className="font-mono">{pedido.txid}</span>
-              </p>
-            </section>
-
-            {/* itens comprados */}
-            <section className="space-y-2 text-xs md:text-sm">
-              <h2 className="font-semibold text-yellow-300">
-                Itens do pedido
-              </h2>
-              <div className="rounded-2xl bg-blue-900/60 border border-blue-800 p-3 space-y-1">
-                {pedido.itemsJson.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between gap-2 text-blue-100"
-                  >
-                    <span>
-                      {item.label}{" "}
-                      <span className="text-[10px] text-blue-300">
-                        x{item.quantity}
-                      </span>
-                    </span>
-                    <span>
-                      R${" "}
-                      {(item.unitPrice * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* resumo financeiro */}
-            <section className="space-y-2 text-sm">
-              <h2 className="font-semibold text-yellow-300">
-                Valores
-              </h2>
-              <div className="space-y-1 text-blue-100 text-xs md:text-sm">
-                <div className="flex justify-between">
-                  <span>Subtotal (sem taxas)</span>
-                  <span>R$ {subtotal.toFixed(2)}</span>
+          <div className="border-t border-slate-100 p-6 md:p-8">
+            <div className="mb-5 flex items-center gap-2"><ShoppingBag className="h-5 w-5 text-blue-800" /><h2 className="font-extrabold text-slate-900">Resumo do pedido</h2></div>
+            <div className="space-y-3">
+              {(Array.isArray(pedido.itemsJson) ? pedido.itemsJson : []).map((item, index) => (
+                <div key={item.id || index} className="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 p-4">
+                  <div><p className="text-sm font-semibold text-slate-900">{item.label}</p><p className="mt-1 text-xs text-slate-500">Quantidade: {item.quantity}</p></div>
+                  <p className="whitespace-nowrap text-sm font-bold text-slate-900">{money(Number(item.unitPrice) * Number(item.quantity))}</p>
                 </div>
-                <div className="flex justify-between">
-                  <span>Taxa de serviço</span>
-                  <span>R$ {taxa.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-yellow-300 font-semibold mt-1">
-                  <span>Total pago</span>
-                  <span>R$ {pedido.valorTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </section>
+              ))}
+            </div>
 
-            {/* status */}
-            <section className="mt-2 text-xs md:text-sm">
-              <p className="flex items-center text-yellow-200">
-                {statusIcon}
-                <span>{statusLabel}</span>
-              </p>
-              <p className="mt-2 text-[11px] text-blue-300">
-                Você receberá a confirmação pela Atlética assim que o pagamento
-                for compensado no sistema interno.
-              </p>
-            </section>
+            <div className="mt-6 space-y-2 border-t border-slate-100 pt-5 text-sm">
+              <div className="flex justify-between text-slate-500"><span>Produtos</span><span>{money(subtotal)}</span></div>
+              <div className="flex justify-between text-slate-500"><span>Taxa de serviço</span><span>{money(taxa)}</span></div>
+              <div className="flex justify-between pt-2 text-lg font-black text-slate-950"><span>Total</span><span>{money(total)}</span></div>
+            </div>
 
-            {/* ações */}
-            <section className="pt-2 flex flex-wrap gap-3">
-              <Button
-                className="rounded-full bg-yellow-400 text-blue-900 font-bold text-xs md:text-sm hover:bg-yellow-500"
-                onClick={() => router.push("/")}
-              >
-                Voltar para a loja
-              </Button>
-
-              <Button
-                variant="outline"
-                className="rounded-full border-blue-500 text-blue-600 text-xs md:text-sm hover:bg-blue-900"
-                onClick={() => window.print()}
-              >
-                Imprimir comprovante
-              </Button>
-            </section>
-          </CardContent>
-        </Card>
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              {!pago && !cancelado && <Button onClick={() => router.push(`/pagamento/${pedido.txid}`)} className="flex-1 bg-blue-800 hover:bg-blue-900">Voltar ao pagamento</Button>}
+              {cancelado && <Button onClick={() => router.push(`/pagamento/${pedido.txid}`)} className="flex-1 bg-blue-800 hover:bg-blue-900">Tentar pagar novamente</Button>}
+              <Button variant="outline" onClick={() => window.print()} className="flex-1"><Printer className="mr-2 h-4 w-4" />Imprimir pedido</Button>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   );
 }
 
 export default function FinalPage() {
-  // Suspense resolve o erro de useSearchParams no build
-  return (
-    <Suspense fallback={<main className="min-h-screen bg-blue-950" />}>
-      <FinalContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<main className="min-h-screen bg-[#f6f7fb]" />}><FinalContent /></Suspense>;
 }

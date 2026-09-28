@@ -119,11 +119,19 @@ export default function PagamentoPage() {
               }
               if (result.status === "approved") {
                 toast.success("Pagamento aprovado!");
-                router.push(`/final?status=success&txid=${txid}`);
-              } else if (result.status === "rejected") {
-                toast.error("Pagamento recusado. Revise os dados ou escolha outra forma de pagamento.");
+                router.push(`/final?txid=${txid}`);
+              } else if (result.status === "rejected" || result.status === "cancelled") {
+                toast.error("Pagamento não aprovado. Revise os dados e tente novamente.");
               } else {
-                router.push(`/final?status=pending&txid=${txid}`);
+                // Pix, boleto e pagamentos em processamento permanecem nesta página.
+                // O próprio Brick exibe QR Code, código Pix, boleto ou instruções de pagamento.
+                toast.info(
+                  pagamentoEscolhido.metodo === "pix"
+                    ? "Pix gerado. Faça o pagamento pelo QR Code ou código exibido abaixo."
+                    : pagamentoEscolhido.metodo === "boleto"
+                      ? "Boleto gerado. Use os dados exibidos abaixo para realizar o pagamento."
+                      : "Pagamento em processamento. Aguarde a confirmação."
+                );
               }
               return result;
             },

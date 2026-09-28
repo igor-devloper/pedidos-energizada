@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
-import { Eye, RefreshCw, Search, Shirt, Wallet, BarChart3, PieChartIcon, Package, Download } from "lucide-react"
+import { Eye, RefreshCw, Search, Shirt, Wallet, BarChart3, PieChartIcon, Package, Download, Pencil, Trash2, Save, X } from "lucide-react"
 
 import { PieChart, Pie, Cell, Label, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from "recharts"
 
@@ -95,10 +95,10 @@ const produtoChartConfig = {
 
 const precosProdutos = {
   KIT_UNIFORME: 90,
-  CAMISA: 55,
-  CANECA: 25,
-  TIRANTE: 10,
-  KIT_CANECA: 30,
+  CAMISA: 60,
+  CANECA: 35,
+  TIRANTE: 12,
+  KIT_CANECA: 35,
 }
 
 export default function AdminPage() {
@@ -108,6 +108,10 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState<"TODOS" | StatusInterno | "PAGO_METADE">("TODOS")
   const [selected, setSelected] = useState<PedidoCarrinho | null>(null)
   const [exportando, setExportando] = useState(false)
+  const [editando, setEditando] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
+  const [formEdit, setFormEdit] = useState({ nome: "", email: "", telefone: "", status: "AGUARDANDO_PAGAMENTO" })
 
   const fetchPedidos = async () => {
     setLoading(true)
@@ -136,6 +140,64 @@ export default function AdminPage() {
   useEffect(() => {
     fetchPedidos()
   }, [])
+
+
+  const abrirPedido = (pedido: PedidoCarrinho) => {
+    setSelected(pedido)
+    setEditando(false)
+    setFormEdit({
+      nome: pedido.nome,
+      email: pedido.email,
+      telefone: pedido.telefone,
+      status: pedido.status,
+    })
+  }
+
+  const salvarEdicao = async () => {
+    if (!selected) return
+    if (!formEdit.nome.trim() || !formEdit.email.trim() || !formEdit.telefone.trim()) {
+      toast.error("Preencha nome, e-mail e telefone.")
+      return
+    }
+    setSalvando(true)
+    try {
+      const res = await fetch(`/api/pedidos-carrinho/${selected.txid}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formEdit),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao atualizar pedido")
+      toast.success("Pedido atualizado com sucesso.")
+      setSelected({ ...selected, ...data })
+      setEditando(false)
+      await fetchPedidos()
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível atualizar o pedido.")
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  const excluirPedido = async () => {
+    if (!selected) return
+    const confirmar = window.confirm(`Excluir definitivamente o pedido de ${selected.nome}? Esta ação não pode ser desfeita.`)
+    if (!confirmar) return
+    setExcluindo(true)
+    try {
+      const res = await fetch(`/api/pedidos-carrinho/${selected.txid}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Erro ao excluir pedido")
+      toast.success("Pedido excluído.")
+      setSelected(null)
+      setEditando(false)
+      await fetchPedidos()
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível excluir o pedido.")
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   // ======= filtros =======
   const filtrados = useMemo(() => {
@@ -713,7 +775,7 @@ export default function AdminPage() {
                             variant="ghost"
                             className="h-8 w-8 text-blue-600 hover:bg-blue-50"
                             title="Ver detalhes"
-                            onClick={() => setSelected(p)}
+                            onClick={() => abrirPedido(p)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -731,11 +793,30 @@ export default function AdminPage() {
         <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
           <DialogContent className="w-[calc(100%-2rem)] max-w-lg max-h-[85vh] overflow-y-auto border-slate-200 bg-white text-slate-900">
             <DialogHeader>
-              <DialogTitle className="text-slate-950">Detalhes do pedido</DialogTitle>
+              <DialogTitle className="text-slate-950">{editando ? "Editar pedido" : "Detalhes do pedido"}</DialogTitle>
             </DialogHeader>
 
             {selected && (
               <div className="space-y-4 text-sm">
+                {editando ? (
+                  <div className="space-y-3">
+                    <div><label className="mb-1 block text-xs font-semibold text-slate-600">Cliente</label><Input value={formEdit.nome} onChange={(e) => setFormEdit((f) => ({ ...f, nome: e.target.value }))} /></div>
+                    <div><label className="mb-1 block text-xs font-semibold text-slate-600">Telefone</label><Input value={formEdit.telefone} onChange={(e) => setFormEdit((f) => ({ ...f, telefone: e.target.value }))} /></div>
+                    <div><label className="mb-1 block text-xs font-semibold text-slate-600">E-mail</label><Input type="email" value={formEdit.email} onChange={(e) => setFormEdit((f) => ({ ...f, email: e.target.value }))} /></div>
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold text-slate-600">Status</label>
+                      <select className="h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={formEdit.status} onChange={(e) => setFormEdit((f) => ({ ...f, status: e.target.value }))}>
+                        <option value="AGUARDANDO_PAGAMENTO">Aguardando pagamento</option>
+                        <option value="PAGO">Pago</option>
+                        <option value="CANCELADO">Cancelado</option>
+                      </select>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <Button onClick={salvarEdicao} disabled={salvando} className="flex-1 bg-blue-700 hover:bg-blue-800"><Save className="mr-2 h-4 w-4" />{salvando ? "Salvando..." : "Salvar"}</Button>
+                      <Button variant="outline" onClick={() => setEditando(false)} disabled={salvando}><X className="mr-2 h-4 w-4" />Cancelar</Button>
+                    </div>
+                  </div>
+                ) : <>
                 <div className="space-y-1">
                   <p>
                     <span className="font-semibold">Cliente:</span> {selected.nome}
@@ -808,6 +889,11 @@ export default function AdminPage() {
                       ))}
                   </div>
                 </div>
+                <div className="flex flex-col gap-2 border-t border-slate-200 pt-4 sm:flex-row">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditando(true)}><Pencil className="mr-2 h-4 w-4" />Editar pedido</Button>
+                  <Button variant="destructive" className="flex-1" onClick={excluirPedido} disabled={excluindo}><Trash2 className="mr-2 h-4 w-4" />{excluindo ? "Excluindo..." : "Excluir pedido"}</Button>
+                </div>
+                </>}
               </div>
             )}
           </DialogContent>

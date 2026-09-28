@@ -1,4 +1,4 @@
-// emails/PedidoConfirmadoEnergizadaEmail.tsx
+// emails/pedido-confirmado-email.tsx
 import {
   Body,
   Container,
@@ -15,11 +15,17 @@ import {
 
 type PaymentOption = "total" | "metade";
 
+export interface EmailOrderItem {
+  nome: string;
+  quantidade: number;
+  precoUnitario?: number;
+  detalhes?: string[];
+}
+
 export interface OrderConfirmationEmailProps {
   customerName: string;
-  orderId: string; // txid
-  tamanho?: "PP" | "P" | "M" | "G" | "GG" | "XG";
-  quantidade?: number;
+  orderId: string;
+  itens?: EmailOrderItem[];
   valorTotal: number;
   valorPago: number;
   pagamento: PaymentOption;
@@ -28,7 +34,8 @@ export interface OrderConfirmationEmailProps {
 }
 
 const baseUrl =
-  process.env.NEXT_PUBLIC_APP_URL || "https://www.atleticaenergizada.shop";
+  process.env.NEXT_PUBLIC_APP_URL ||
+  "https://www.atleticaenergizada.shop";
 
 const currencyBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", {
@@ -42,16 +49,16 @@ export default function PedidoConfirmadoEnergizadaEmail(
   const {
     customerName,
     orderId,
-    tamanho,
-    quantidade,
+    itens = [],
     valorTotal,
     valorPago,
     pagamento,
     supportEmail = "atleticaenergizada@cear.ufpb.br",
-    logoSrc = `${baseUrl}/energizada-logo-email.png`, // coloca aqui o nome do arquivo otimizado p/ email
+    logoSrc = `${baseUrl}/energizada-logo-email.png`,
   } = props;
 
-  const previewText = `Seu pagamento foi aprovado – pedido #${orderId}`;
+  const previewText =
+    `Seu pagamento foi aprovado – pedido #${orderId}`;
 
   return (
     <Html>
@@ -60,7 +67,6 @@ export default function PedidoConfirmadoEnergizadaEmail(
 
       <Body style={styles.main}>
         <Container style={styles.outerCard}>
-          {/* LOGO */}
           <Section style={styles.logoSection}>
             <Img
               src={logoSrc}
@@ -69,84 +75,128 @@ export default function PedidoConfirmadoEnergizadaEmail(
               style={{
                 display: "block",
                 margin: "0 auto",
-                height: "auto",          // ← mantém proporção natural!
+                height: "auto",
                 maxWidth: "160px",
                 borderRadius: "16px",
-                filter: "drop-shadow(0 0 12px #ffd50050)", // amarelo energizada opcional
               }}
             />
           </Section>
 
-          {/* TEXTO INICIAL */}
           <Section style={styles.innerCard}>
-            <Text style={styles.hi}>Olá, {customerName} ⚡</Text>
+            <Text style={styles.hi}>
+              Olá, {customerName} ⚡
+            </Text>
 
             <Text style={styles.paragraph}>
-              Boa! O seu pedido na <strong>Atlética Energizada</strong> foi
+              Boa! O seu pedido na{" "}
+              <strong>Atlética Energizada</strong> foi
               recebido com sucesso e o pagamento está{" "}
-              <strong>aprovado</strong>. Abaixo está o resumo com os detalhes do
-              pedido e o valor{" "}
+              <strong>aprovado</strong>. Abaixo está o
+              resumo com os detalhes do pedido e o valor{" "}
               {pagamento === "metade"
                 ? "pago referente à entrada (50%)"
                 : "pago na confirmação"}
               .
             </Text>
 
-            {/* RESUMO DO PEDIDO */}
             <Section style={styles.resumeCard}>
               <Row>
-                <Text style={styles.heading}>Resumo do pedido</Text>
-
-                <Text style={styles.kv}>
-                  <strong>Nº do pedido:</strong> {orderId}
-                </Text>
-
-                {tamanho && (
-                  <Text style={styles.kv}>
-                    <strong>Tamanho:</strong> {tamanho}
-                  </Text>
-                )}
-
-                {typeof quantidade === "number" && (
-                  <Text style={styles.kv}>
-                    <strong>Quantidade:</strong> {quantidade}
-                  </Text>
-                )}
-
-                <Text style={styles.kv}>
-                  <strong>Total:</strong> {currencyBRL(valorTotal)}
+                <Text style={styles.heading}>
+                  Resumo do pedido
                 </Text>
 
                 <Text style={styles.kv}>
-                  <strong>
-                    {pagamento === "metade" ? "Valor da entrada" : "Valor pago"}
-                    :
-                  </strong>{" "}
-                  <span style={styles.valorPago}>
-                    {currencyBRL(valorPago)}
-                  </span>
+                  <strong>Nº do pedido:</strong>{" "}
+                  {orderId}
                 </Text>
               </Row>
+
+              {itens.length > 0 && (
+                <>
+                  <Hr style={styles.itemDivider} />
+
+                  <Text style={styles.itemsTitle}>
+                    Produtos
+                  </Text>
+
+                  {itens.map((item, index) => (
+                    <Section
+                      key={`${item.nome}-${index}`}
+                      style={styles.itemCard}
+                    >
+                      <Text style={styles.itemName}>
+                        {item.nome}
+                      </Text>
+
+                      <Text style={styles.itemMeta}>
+                        Quantidade: {item.quantidade}
+                        {typeof item.precoUnitario ===
+                        "number"
+                          ? ` • ${currencyBRL(
+                              item.precoUnitario,
+                            )} cada`
+                          : ""}
+                      </Text>
+
+                      {Array.isArray(item.detalhes) &&
+                        item.detalhes.map(
+                          (detalhe, detalheIndex) => (
+                            <Text
+                              key={detalheIndex}
+                              style={styles.itemDetail}
+                            >
+                              {detalhe}
+                            </Text>
+                          ),
+                        )}
+                    </Section>
+                  ))}
+                </>
+              )}
+
+              <Hr style={styles.itemDivider} />
+
+              <Text style={styles.kv}>
+                <strong>Total:</strong>{" "}
+                {currencyBRL(valorTotal)}
+              </Text>
+
+              <Text style={styles.kv}>
+                <strong>
+                  {pagamento === "metade"
+                    ? "Valor da entrada"
+                    : "Valor pago"}
+                  :
+                </strong>{" "}
+                <span style={styles.valorPago}>
+                  {currencyBRL(valorPago)}
+                </span>
+              </Text>
             </Section>
 
             <Hr style={styles.hr} />
 
-            {/* RODAPÉ */}
             <Section>
               <Text style={styles.paragraph}>
-                Dúvidas ou algum problema? Fale com a gente em{" "}
-                <Link href={`mailto:${supportEmail}`} style={styles.link}>
+                Dúvidas ou algum problema? Fale com a
+                gente em{" "}
+                <Link
+                  href={`mailto:${supportEmail}`}
+                  style={styles.link}
+                >
                   {supportEmail}
                 </Link>
                 .
               </Text>
 
               <Text style={styles.footer}>
-                Atlética Energizada • João Pessoa / PB • Brasil
+                Atlética Energizada • João Pessoa / PB •
+                Brasil
               </Text>
+
               <Text style={styles.micro}>
-                Você recebeu este e-mail porque realizou um pedido no site da
-                Atlética Energizada.
+                Você recebeu este e-mail porque realizou
+                um pedido no site da Atlética Energizada.
               </Text>
             </Section>
           </Section>
@@ -156,13 +206,12 @@ export default function PedidoConfirmadoEnergizadaEmail(
   );
 }
 
-/* ===== estilos ===== */
 const styles = {
   main: {
-    backgroundColor: "#020617", // fundo geral azul bem escuro
+    backgroundColor: "#020617",
     padding: "32px 0",
     fontFamily:
-      '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
+      'Montserrat,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
   },
   outerCard: {
     margin: "0 auto",
@@ -172,10 +221,6 @@ const styles = {
   logoSection: {
     textAlign: "center" as const,
     marginBottom: "12px",
-  },
-  logo: {
-    display: "block",
-    margin: "0 auto",
   },
   innerCard: {
     backgroundColor: "#020617",
@@ -189,6 +234,7 @@ const styles = {
     lineHeight: "1.4",
     color: "#e5e7eb",
     margin: "0 0 8px",
+    fontWeight: 700 as const,
   },
   paragraph: {
     fontSize: "14px",
@@ -199,14 +245,13 @@ const styles = {
   heading: {
     fontSize: "16px",
     fontWeight: 700 as const,
-    color: "#facc15", // amarelo Energizada
+    color: "#facc15",
     marginBottom: "8px",
   },
   resumeCard: {
-    background:
-      "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(30,64,175,0.85))",
+    backgroundColor: "#0f172a",
     borderRadius: "14px",
-    border: "1px solid rgba(148,163,184,0.25)",
+    border: "1px solid #334155",
     padding: "16px 18px",
     marginTop: "10px",
     marginBottom: "8px",
@@ -215,11 +260,48 @@ const styles = {
     fontSize: "13px",
     lineHeight: "1.6",
     color: "#e5e7eb",
-    margin: "2px 0",
+    margin: "4px 0",
+  },
+  itemsTitle: {
+    color: "#facc15",
+    fontSize: "12px",
+    fontWeight: 700 as const,
+    textTransform: "uppercase" as const,
+    letterSpacing: "1px",
+    margin: "12px 0 8px",
+  },
+  itemCard: {
+    backgroundColor: "#111c31",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    margin: "0 0 8px",
+  },
+  itemName: {
+    color: "#f8fafc",
+    fontSize: "13px",
+    fontWeight: 700 as const,
+    lineHeight: "1.5",
+    margin: "0 0 3px",
+  },
+  itemMeta: {
+    color: "#cbd5e1",
+    fontSize: "12px",
+    lineHeight: "1.5",
+    margin: "0 0 2px",
+  },
+  itemDetail: {
+    color: "#94a3b8",
+    fontSize: "11px",
+    lineHeight: "1.5",
+    margin: "1px 0",
+  },
+  itemDivider: {
+    borderColor: "#334155",
+    margin: "12px 0",
   },
   valorPago: {
     color: "#22c55e",
-    fontWeight: 700,
+    fontWeight: 700 as const,
   },
   hr: {
     borderColor: "#1f2937",
